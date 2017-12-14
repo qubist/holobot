@@ -2,9 +2,15 @@
 
 This code is based on : https://github.com/mattermost/mattermost-bot-sample-golang
 
-## Usage
+## Getting Started
 
-1 - setup the values in a config.yaml file like this:
+1 - Clone the GitHub repository.
+```
+git clone https://github.com/qubist/holobot.git
+cd holobot
+```
+
+2 - Create a config file called `config.yaml` and setup the values like this:
 
 ``` yaml
 Domain: "chat.holochain.net"
@@ -18,12 +24,11 @@ TeamName: "team-it-should-run-on"
 LogChannel: "debugging-for-sample-bot"
 
 ```
+3 - Get the Mattermost server model package.
+```
+go get github.com/mattermost/mattermost-server/model
+```
 
-2 - Clone the GitHub repository to run the sample.
-```
-git clone https://github.com/qubist/holobot.git
-cd holobot
-```
 3 - Start the Bot.
 ```
 make run
@@ -34,11 +39,9 @@ You can verify the Bot is running when
 
 ## Test the Bot
 
-1 - Log in to the Mattermost server as `bill@example.com` and `password1.`
+1 - Log in to the Mattermost server as `your@email.here` and `somepasswordhere`.
 
 2 - Join the `Debugging For Sample Bot` channel.
-
-3 - Post a message in the channel such as `are you running?` to see if the Bot responds. You should see a response similar to `Yes I'm running` if the Bot is running.
 
 ## Stop the Bot
 

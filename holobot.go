@@ -31,6 +31,7 @@ var webSocketClient *model.WebSocketClient
 var botUser *model.User
 var botTeam *model.Team
 var debuggingChannel *model.Channel
+var townsquareChannel *model.Channel
 
 type ActionHandler func(event *model.WebSocketEvent) error
 
@@ -91,6 +92,8 @@ func main() {
 	// for all future web service requests that require a team.
 	//client.SetTeamId(botTeam.Id)
 
+	GetTownSquare()
+
 	// Lets create a bot channel for logging debug messages into
 	CreateBotDebuggingChannelIfNeeded()
 	SendMsgToDebuggingChannel("_"+config.LongName+" has **started** running_", "")
@@ -101,6 +104,7 @@ func main() {
 
 		Action{Name: "HandleShowAllChannelEvents", Handler: HandleShowAllChannelEvents},
 		Action{Name: "HandleJoins", Event: model.WEBSOCKET_EVENT_USER_ADDED, Handler: HandleJoins},
+		Action{Name: "HandleTeamJoins", Event: model.WEBSOCKET_EVENT_USER_ADDED, Handler: HandleTeamJoins},
 	}
 
 	commands = []Command{
@@ -185,6 +189,15 @@ func FindBotTeam() {
 		os.Exit(1)
 	} else {
 		botTeam = team
+	}
+}
+
+func GetTownSquare() {
+	if rchannel, resp := client.GetChannelByName("town-square", botTeam.Id, ""); resp.Error != nil {
+		println("We failed to get the town-square channel")
+		PrintError(resp.Error)
+	} else {
+		townsquareChannel = rchannel
 	}
 }
 
@@ -273,21 +286,28 @@ func HandleJoins(event *model.WebSocketEvent) (err error) {
 	return
 }
 
-func HandleShowAllChannelEvents(event *model.WebSocketEvent) (err error) {
-	if event.Broadcast.ChannelId != debuggingChannel.Id {
+func HandleTeamJoins(event *model.WebSocketEvent) (err error) {
+// If this isn't the town-square channel then lets ingore it
+	if event.Broadcast.ChannelId != townsquareChannel.Id {
 		return
 	}
-	if event.Event == model.WEBSOCKET_EVENT_POSTED {
+
+	SendDirectMessage(event.Data["user_id"].(string), "Welcome to the Holochain chat rooms! Here's some instructions and stuff.")
+
+	return
+}
+
+func HandleShowAllChannelEvents(event *model.WebSocketEvent) (err error) {
+	// if event.Broadcast.ChannelId != debuggingChannel.Id {
+	// 	return
+	// }
+	if event.Event == model.WEBSOCKET_EVENT_POSTED || event.Event == model.WEBSOCKET_EVENT_CHANNEL_VIEWED {
 		return
 	}
 
 	SendMsgToDebuggingChannel(fmt.Sprintf("I just got this event:%v with data: %v ", event.Event, event.Data), "")
 	return
 }
-
-const (
-	HelpString = "commands: help,fish"
-)
 
 func HandleCommands(event *model.WebSocketEvent) (err error) {
 	// If this isn't the debugging channel then lets ingore it
@@ -303,7 +323,7 @@ func HandleCommands(event *model.WebSocketEvent) (err error) {
 			return
 		}
 
-		// ignore anything that doesn't say @bot
+		// ignore anything that doesn't say @holobot
 		if matched, _ := regexp.MatchString(`(?:^|\W)@`+config.UserName+`(?:$|\W)`, post.Message); matched {
 
 			for _, cmd := range commands {
