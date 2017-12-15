@@ -23,6 +23,7 @@ type Config struct {
 	TeamName     string
 	LogChannel   string
 	Domain       string
+	Debugging    bool
 }
 
 var config Config
@@ -96,21 +97,31 @@ func main() {
 
 	GetTownSquare()
 
-	// Lets create a bot channel for logging debug messages into
-	CreateBotDebuggingChannelIfNeeded()
-	SendMsgToDebuggingChannel("_"+config.LongName+" has **started** running_", "")
 
 	actions = []Action{
-		Action{Name: "Debug Log Channel Handler", Event: model.WEBSOCKET_EVENT_POSTED, Handler: HandleMsgFromDebuggingChannel},
 		Action{Name: "Command Handler", Event: model.WEBSOCKET_EVENT_POSTED, Handler: HandleCommands},
-
-		Action{Name: "HandleShowAllChannelEvents", Handler: HandleShowAllChannelEvents},
 		Action{Name: "HandleTeamJoins", Event: model.WEBSOCKET_EVENT_NEW_USER, Handler: HandleTeamJoins},
 	}
 
+	// if debug mode is on, activate the Debug Log Channel Handler, and do some other things
+	fmt.Printf("imported config.yaml data:\n%v\n", config)
+	if config.Debugging {
+		println("DEGUBBING IS ON, BOIS")
+		actions = append(actions, Action{Name: "Debug Log Channel Handler",
+															Event: model.WEBSOCKET_EVENT_POSTED,
+															Handler: HandleMsgFromDebuggingChannel})
+		actions = append(actions, Action{Name: "HandleShowAllChannelEvents",
+															Handler: HandleShowAllChannelEvents})
+
+		// Lets create a bot channel for logging debug messages into
+		CreateBotDebuggingChannelIfNeeded()
+		SendMsgToDebuggingChannel("_"+config.LongName+" has **started** running_", "")
+	}
+
 	commands = []Command{
-		Command{Name: "help",
-			Description: "print out this help text",
+		Command{
+			Name: "help",
+			Description: "Print out this help text.",
 			Handler: func(event *model.WebSocketEvent, post *model.Post) error {
 				var cmdList []string
 				for _, cmd := range commands {
@@ -122,6 +133,20 @@ func main() {
 				return nil
 			},
 		},
+		/*Command{
+			Name: "time",
+			Description "Display a given time in various relevant time zones."
+			Handler: func(event *model.WebSocketEvent, post *model.Post) error {
+				//FIXME
+				timeZoneText := "\"[2PM EST] (input)\" is:
+
+| PT | MT | ET | GMT |
+|---------|--------|--------|--------|
+| [12:00] | [13:00] | [14:00] | [19:00] |
+| [12:00PM] | [1:00PM] | [2:00PM] | [7:00PM] |"
+				SendMsgToChannel(event.Broadcast.ChannelId, timeZoneText, post.Id)
+			}
+		},*/
 	}
 	// Lets start listening to some channels via the websocket!
 	webSocketClient, apperr := model.NewWebSocketClient4("wss://"+config.Domain, client.AuthToken)
@@ -277,27 +302,18 @@ func HandleWebSocketResponse(event *model.WebSocketEvent) {
 
 //  Handlers ----------------------------------------------
 
-func HandleJoins(event *model.WebSocketEvent) (err error) {
-	if event.Broadcast.ChannelId != debuggingChannel.Id {
-		return
-	}
-
-	SendDirectMessage(event.Data["user_id"].(string), "you just got added to the channel!")
-
-	return
-}
-
 func HandleTeamJoins(event *model.WebSocketEvent) (err error) {
 	user := event.Data["user_id"].(string)
 
 	teams, _ := client.GetTeamsForUser(user, "")
 	if teams != nil && len(teams) == 1 {
-		if teams[0].Id == botTeam.Id {
-			// spin off go routine to wait a bit before sending the direct message
+		if teams[0].Id == botTeam.Id { // if you're a brand new user and on the public team:
+			// spin off go routine to wait a bit before sending a direct message
 			go func() {
 				time.Sleep(time.Second * 7)
-				SendDirectMessage(user, "Welcome to the Holochain chat rooms! Here's some instructions and stuff.")
+				SendDirectMessage(user, "Welcome to the Holochain chat rooms! Here's some instructions and stuff. FIXME")
 			}()
+			//FIXME add user to announcements
 		}
 	} else {
 		fmt.Printf("new user in no team or more than one??!!")
@@ -312,18 +328,17 @@ func HandleShowAllChannelEvents(event *model.WebSocketEvent) (err error) {
 	if event.Event == model.WEBSOCKET_EVENT_POSTED || event.Event == model.WEBSOCKET_EVENT_CHANNEL_VIEWED {
 		return
 	}
-
-	SendMsgToDebuggingChannel(fmt.Sprintf("I just got this event:%v with data: %v ", event.Event, event.Data), "")
+	SendMsgToDebuggingChannel(fmt.Sprintf("I just got this event: \"%v\" with data: \"%v\"", event.Event, event.Data), "")
 	return
 }
 
 func HandleCommands(event *model.WebSocketEvent) (err error) {
 	// If this isn't the debugging channel then lets ingore it
-	//	if event.Broadcast.ChannelId != debuggingChannel.Id {
-	//		return
-	//	}
+		// if event.Broadcast.ChannelId != debuggingChannel.Id {
+		// 	return
+		// }
 
-	println("responding to debugging channel msg")
+	println("checking for commands via HandleCommands")
 	post := model.PostFromJson(strings.NewReader(event.Data["post"].(string)))
 	if post != nil {
 		// ignore my events
@@ -333,7 +348,6 @@ func HandleCommands(event *model.WebSocketEvent) (err error) {
 
 		// ignore anything that doesn't say @holobot
 		if matched, _ := regexp.MatchString(`(?:^|\W)@`+config.UserName+`(?:$|\W)`, post.Message); matched {
-
 			for _, cmd := range commands {
 				// help command
 				if matched, _ := regexp.MatchString(`(?:^|\W)`+cmd.Name+`(?:$|\W)`, post.Message); matched {
@@ -347,49 +361,54 @@ func HandleCommands(event *model.WebSocketEvent) (err error) {
 	}
 	return
 }
+
 func HandleMsgFromDebuggingChannel(event *model.WebSocketEvent) (err error) {
-	// If this isn't the debugging channel then lets ingore it
-	if event.Broadcast.ChannelId != debuggingChannel.Id {
+	// if debugging mode is on...
+	if config.Debugging {
+		// If this isn't the debugging channel then lets ingore it
+		if event.Broadcast.ChannelId != debuggingChannel.Id {
+			return
+		}
+
+		println("attempting response to debugging channel msg via `HandleMsgFromDebuggingChannel`")
+
+		post := model.PostFromJson(strings.NewReader(event.Data["post"].(string)))
+		if post != nil {
+
+			// ignore my events
+			if post.UserId == botUser.Id {
+				return
+			}
+
+			// if you see any word matching 'alive' then respond
+			if matched, _ := regexp.MatchString(`(?:^|\W)alive(?:$|\W)`, post.Message); matched {
+				SendMsgToDebuggingChannel("Yes I'm running", post.Id)
+				return
+			}
+
+			// if you see any word matching 'up' then respond
+			if matched, _ := regexp.MatchString(`(?:^|\W)up(?:$|\W)`, post.Message); matched {
+				SendMsgToDebuggingChannel("Yes I'm running", post.Id)
+				return
+			}
+
+			// if you see any word matching 'running' then respond
+			if matched, _ := regexp.MatchString(`(?:^|\W)running(?:$|\W)`, post.Message); matched {
+				SendMsgToDebuggingChannel("Yes I'm running", post.Id)
+				return
+			}
+
+			// if you see any word matching 'hello' then respond
+			if matched, _ := regexp.MatchString(`(?:^|\W)hello(?:$|\W)`, post.Message); matched {
+				SendMsgToDebuggingChannel("Yes I'm running", post.Id)
+				return
+			}
+		}
+
 		return
-	}
-
-	println("responding to debugging channel msg")
-
-	post := model.PostFromJson(strings.NewReader(event.Data["post"].(string)))
-	if post != nil {
-
-		// ignore my events
-		if post.UserId == botUser.Id {
-			return
-		}
-
-		// if you see any word matching 'alive' then respond
-		if matched, _ := regexp.MatchString(`(?:^|\W)alive(?:$|\W)`, post.Message); matched {
-			SendMsgToDebuggingChannel("Yes I'm running", post.Id)
-			return
-		}
-
-		// if you see any word matching 'up' then respond
-		if matched, _ := regexp.MatchString(`(?:^|\W)up(?:$|\W)`, post.Message); matched {
-			SendMsgToDebuggingChannel("Yes I'm running", post.Id)
-			return
-		}
-
-		// if you see any word matching 'running' then respond
-		if matched, _ := regexp.MatchString(`(?:^|\W)running(?:$|\W)`, post.Message); matched {
-			SendMsgToDebuggingChannel("Yes I'm running", post.Id)
-			return
-		}
-
-		// if you see any word matching 'hello' then respond
-		if matched, _ := regexp.MatchString(`(?:^|\W)hello(?:$|\W)`, post.Message); matched {
-			SendMsgToDebuggingChannel("Yes I'm running", post.Id)
-			return
-		}
-	}
-
-	SendMsgToDebuggingChannel("I did not understand you!", post.Id)
+	}else {
 	return
+	}
 }
 
 func PrintError(err *model.AppError) {
@@ -407,8 +426,9 @@ func SetupGracefulShutdown() {
 			if webSocketClient != nil {
 				webSocketClient.Close()
 			}
-
-			SendMsgToDebuggingChannel("_"+config.LongName+" has **stopped** running_", "")
+			if config.Debugging {
+				SendMsgToDebuggingChannel("_"+config.LongName+" has **stopped** running_", "")
+			}
 			os.Exit(0)
 		}
 	}()

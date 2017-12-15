@@ -22,6 +22,7 @@ UserFirst: "holo"
 UserLast: "bot"
 TeamName: "team-it-should-run-on"
 LogChannel: "debugging-for-sample-bot"
+Debugging: false
 
 ```
 3 - Get the Mattermost server model package.
