@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"regexp"
 	"strings"
+	"time"
 )
 
 type Config struct {
@@ -86,8 +87,9 @@ func main() {
 	// If the bot user doesn't have the correct information lets update his profile
 	UpdateTheBotUserIfNeeded()
 
-	// Lets find our bot team
-	FindBotTeam()
+	// Lets find our teams
+	botTeam = FindTeam(config.TeamName)
+
 	// This is an important step.  Lets make sure we use the botTeam
 	// for all future web service requests that require a team.
 	//client.SetTeamId(botTeam.Id)
@@ -103,8 +105,7 @@ func main() {
 		Action{Name: "Command Handler", Event: model.WEBSOCKET_EVENT_POSTED, Handler: HandleCommands},
 
 		Action{Name: "HandleShowAllChannelEvents", Handler: HandleShowAllChannelEvents},
-		Action{Name: "HandleJoins", Event: model.WEBSOCKET_EVENT_USER_ADDED, Handler: HandleJoins},
-		Action{Name: "HandleTeamJoins", Event: model.WEBSOCKET_EVENT_USER_ADDED, Handler: HandleTeamJoins},
+		Action{Name: "HandleTeamJoins", Event: model.WEBSOCKET_EVENT_NEW_USER, Handler: HandleTeamJoins},
 	}
 
 	commands = []Command{
@@ -181,15 +182,15 @@ func UpdateTheBotUserIfNeeded() {
 	}
 }
 
-func FindBotTeam() {
-	if team, resp := client.GetTeamByName(config.TeamName, ""); resp.Error != nil {
+func FindTeam(name string) *model.Team {
+	team, resp := client.GetTeamByName(name, "")
+	if resp.Error != nil {
 		println("We failed to get the initial load")
-		println("or we do not appear to be a member of the team '" + config.TeamName + "'")
+		println("or we do not appear to be a member of the team '" + name + "'")
 		PrintError(resp.Error)
 		os.Exit(1)
-	} else {
-		botTeam = team
 	}
+	return team
 }
 
 func GetTownSquare() {
@@ -287,13 +288,20 @@ func HandleJoins(event *model.WebSocketEvent) (err error) {
 }
 
 func HandleTeamJoins(event *model.WebSocketEvent) (err error) {
-// If this isn't the town-square channel then lets ingore it
-	if event.Broadcast.ChannelId != townsquareChannel.Id {
-		return
+	user := event.Data["user_id"].(string)
+
+	teams, _ := client.GetTeamsForUser(user, "")
+	if teams != nil && len(teams) == 1 {
+		if teams[0].Id == botTeam.Id {
+			// spin off go routine to wait a bit before sending the direct message
+			go func() {
+				time.Sleep(time.Second * 7)
+				SendDirectMessage(user, "Welcome to the Holochain chat rooms! Here's some instructions and stuff.")
+			}()
+		}
+	} else {
+		fmt.Printf("new user in no team or more than one??!!")
 	}
-
-	SendDirectMessage(event.Data["user_id"].(string), "Welcome to the Holochain chat rooms! Here's some instructions and stuff.")
-
 	return
 }
 
