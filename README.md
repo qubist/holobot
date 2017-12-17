@@ -13,13 +13,13 @@ cd holobot
 2 - Create a config file called `config.yaml` and setup the values like this:
 
 ``` yaml
-Domain: "chat.holochain.net"
+Domain: "your.chatdomain.com"
 LongName: "Mattermost Bot Sample"
 UserEmail: "your@email.here"
 UserPassword: "somepasswordhere"
-UserName: "holobot"
-UserFirst: "holo"
-UserLast: "bot"
+UserName: "imabot"
+UserFirst: "Im A."
+UserLast: "Bot"
 TeamName: "team-it-should-run-on"
 PublicTeam: true
 LogChannel: "debugging-for-sample-bot"
