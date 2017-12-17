@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"errors"
 )
 
 type Config struct {
@@ -21,6 +22,7 @@ type Config struct {
 	UserLast     string
 	UserPassword string
 	TeamName     string
+	PublicTeam   bool
 	LogChannel   string
 	Domain       string
 	Debugging    bool
@@ -34,6 +36,7 @@ var botUser *model.User
 var botTeam *model.Team
 var debuggingChannel *model.Channel
 var townsquareChannel *model.Channel
+var announcementsChannel *model.Channel
 
 type ActionHandler func(event *model.WebSocketEvent) error
 
@@ -77,30 +80,30 @@ func main() {
 
 	client = model.NewAPIv4Client("https://" + config.Domain)
 
-	// Lets test to see if the mattermost server is up and running
+	// Let's test to see if the mattermost server is up and running
 	MakeSureServerIsRunning()
 
-	// lets attempt to login to the Mattermost server as the bot user
+	// let's attempt to login to the Mattermost server as the bot user
 	// This will set the token required for all future calls
 	// You can get this token with client.AuthToken
 	LoginAsTheBotUser()
 
-	// If the bot user doesn't have the correct information lets update his profile
+	// If the bot user doesn't have the correct information let's update its profile
 	UpdateTheBotUserIfNeeded()
 
-	// Lets find our teams
+	// Let's find our teams
 	botTeam = FindTeam(config.TeamName)
 
-	// This is an important step.  Lets make sure we use the botTeam
+	// This is an important step.  Let's make sure we use the botTeam
 	// for all future web service requests that require a team.
 	//client.SetTeamId(botTeam.Id)
 
+	GetAnnouncements()
 	GetTownSquare()
 
-
+	//array of all the actions
 	actions = []Action{
 		Action{Name: "Command Handler", Event: model.WEBSOCKET_EVENT_POSTED, Handler: HandleCommands},
-		Action{Name: "HandleTeamJoins", Event: model.WEBSOCKET_EVENT_NEW_USER, Handler: HandleTeamJoins},
 	}
 
 	// if debug mode is on, activate the Debug Log Channel Handler, and do some other things
@@ -113,13 +116,23 @@ func main() {
 		actions = append(actions, Action{Name: "HandleShowAllChannelEvents",
 															Handler: HandleShowAllChannelEvents})
 
-		// Lets create a bot channel for logging debug messages into
+		// Let's create a bot channel for logging debug messages into
 		CreateBotDebuggingChannelIfNeeded()
 		SendMsgToDebuggingChannel("_"+config.LongName+" has **started** running_", "")
 	}
 
+	// add public team actions only if running in the public team
+	if config.PublicTeam {
+		actions = append(actions, Action{Name: "Delete \"Joined\" Alerts",
+															Event: model.WEBSOCKET_EVENT_POSTED,
+															Handler: HandleAnnouncementJoinMessages})
+		actions = append(actions, Action{Name: "Welcome Actions - Msg, Add to Announce., etc",
+															Event: model.WEBSOCKET_EVENT_NEW_USER,
+															Handler: HandleTeamJoins})
+	}
+
 	commands = []Command{
-		Command{
+		/*Command{
 			Name: "help",
 			Description: "Print out this help text.",
 			Handler: func(event *model.WebSocketEvent, post *model.Post) error {
@@ -132,23 +145,120 @@ func main() {
 				SendMsgToChannel(event.Broadcast.ChannelId, helpText, post.Id)
 				return nil
 			},
-		},
-		/*Command{
-			Name: "time",
-			Description "Display a given time in various relevant time zones."
-			Handler: func(event *model.WebSocketEvent, post *model.Post) error {
-				//FIXME
-				timeZoneText := "\"[2PM EST] (input)\" is:
+		}, */
 
-| PT | MT | ET | GMT |
-|---------|--------|--------|--------|
-| [12:00] | [13:00] | [14:00] | [19:00] |
-| [12:00PM] | [1:00PM] | [2:00PM] | [7:00PM] |"
-				SendMsgToChannel(event.Broadcast.ChannelId, timeZoneText, post.Id)
-			}
-		},*/
+		//time command
+		Command{
+			Name: "time",
+			Description: "Displays times mentioned in the message in various relevant time zones.",
+			Handler: func(event *model.WebSocketEvent, post *model.Post) error {
+				//regex to match valid times with time zones (ex. "1 GMT", "2:00 AM EST", "15:00 PT", etc.)
+				re := regexp.MustCompile(`([0-9]+)(:[0-9]+)* *([paPA][mM])* *([a-zA-Z]+)((\+|\-)([0-9]+))*`)
+				if matches := re.FindAllStringSubmatch(post.Message, -1); matches != nil {
+					for _, m := range matches {
+						layout := "15"
+						input := m[1]
+						if len(m) > 2 && m[2] != "" {
+							layout += ":04"
+							input+=m[2]
+						}
+						if len(m) > 3 && m[3] != "" {
+							layout += "PM"
+							input+=m[3]
+						}
+
+						// determine location from input
+						var err error
+						var loc string
+						// recognized time zones strings
+						switch strings.ToUpper(m[4]) {
+						case "PST", "PT", "PACIFIC":
+							loc = "America/Los_Angeles"
+						case "MST", "MT", "MOUNTAIN":
+							loc = "America/Denver"
+						case "CST", "CT", "CENTRAL":
+							loc = "America/Chicago"
+						case "EST", "ET", "EASTERN":
+							loc = "America/New_York"
+						case "GMT", "UTC", "GREENWICH":
+							loc = "etc/UTC"
+						case "CHINA", "SHANGHAI", "BEIJING":
+							loc = "China/Shanghai"
+						case "ECT", "QUITO", "ECUADOR":
+							loc = "America/Guayaquil"
+						case "IST", "INDIAN", "INDIA":
+							loc = "Asia/Kolkata"
+						default:
+							loc = m[4] //default
+						}
+						if m[5]!="" { // if there's a plus or minus on the time zone,
+							if strings.ToUpper(m[4]) == "GMT" { // and it's GMT,
+								loc = "Etc/GMT"// set location to GMT plus whatever was in the input
+								if m[6]=="+"{
+									loc+="-"+m[7]
+								} else if m[6]=="-"{
+									loc+="+"+m[7]
+								}
+							} else { // if it's not GMT,
+								err = errors.New("") // throw an error.
+							}
+						}
+
+						var t time.Time
+						var l *time.Location
+
+						// parses the time in whichever location was specified (golang time library magic)
+						if err == nil {
+							l, err = time.LoadLocation(loc)
+							if err == nil {
+								t, err = time.ParseInLocation(layout, strings.ToUpper(input), l)
+							}
+						}
+
+						var timeZoneText string
+						var debuggingTimeZoneText string
+
+						// converts time into the desired output time zones,
+						if err != nil {
+							timeZoneText = fmt.Sprintf("I couldn't understand the time: \"%s\"", m[0])
+						}else{
+							ptl,_:=time.LoadLocation("America/Los_Angeles")
+							pt := t.In(ptl).Format("3:04 PM")
+							mtl,_:=time.LoadLocation("MST")
+							mt := t.In(mtl).Format("3:04 PM")
+							ctl,_:=time.LoadLocation("America/Chicago")
+							ct := t.In(ctl).Format("3:04 PM")
+							etl,_:=time.LoadLocation("EST")
+							et := t.In(etl).Format("3:04 PM")
+							gmtl,_:=time.LoadLocation("GMT")
+							gmt := t.In(gmtl).Format("15:04")
+							cetl,_:=time.LoadLocation("CET")
+							cet := t.In(cetl).Format("15:04")
+							// and prints them in a table
+							timeZoneText = fmt.Sprintf(`"%s" is:
+
+|   PT    |   MT   |   CT   |   ET   |  GMT   |  CET   |
+|:-------:|:------:|:------:|:------:|:------:|:------:|
+|   %s    |   %s   |   %s   |   %s   |   %s   |   %s   |`, m[0], pt, mt, ct, et, gmt, cet)
+
+							// make a debugging message with extra info about the above processes
+							debuggingTimeZoneText = fmt.Sprintf("➚ *Debugging Info:*\n(%v)\nTime zone I heard (m[4]) was: %v\nLocation (l): %v", t, m[4], l)
+						}
+						SendMsgToChannel(event.Broadcast.ChannelId, timeZoneText, post.Id)
+						// send debugging message if debugging is turned on
+						if config.Debugging {
+							SendMsgToChannel(event.Broadcast.ChannelId, debuggingTimeZoneText, post.Id)
+						}
+
+					}
+
+
+				}
+				return nil
+			},
+		},
 	}
-	// Lets start listening to some channels via the websocket!
+	// Let's start listening to some channels via the websocket!
 	webSocketClient, apperr := model.NewWebSocketClient4("wss://"+config.Domain, client.AuthToken)
 	if err != nil {
 		println("We failed to connect to the web socket")
@@ -182,7 +292,7 @@ func MakeSureServerIsRunning() {
 
 func LoginAsTheBotUser() {
 	if user, resp := client.Login(config.UserEmail, config.UserPassword); resp.Error != nil {
-		println("There was a problem logging into the Mattermost server.  Are you sure ran the setup steps from the README.md?")
+		println("There was a problem logging into the Mattermost server. Are you sure ran the setup steps from the README.md?")
 		PrintError(resp.Error)
 		os.Exit(1)
 	} else {
@@ -216,6 +326,18 @@ func FindTeam(name string) *model.Team {
 		os.Exit(1)
 	}
 	return team
+}
+
+func GetAnnouncements() {
+	if rchannel, resp := client.GetChannelByName("announcements", botTeam.Id, ""); resp.Error != nil {
+		println("We failed to get the annoucements channel")
+		PrintError(resp.Error)
+	} else {
+		announcementsChannel = rchannel
+		if config.Debugging {
+			fmt.Println("Announcements channel gotten as: ", rchannel)
+		}
+	}
 }
 
 func GetTownSquare() {
@@ -302,21 +424,42 @@ func HandleWebSocketResponse(event *model.WebSocketEvent) {
 
 //  Handlers ----------------------------------------------
 
+func HandleAnnouncementJoinMessages(event *model.WebSocketEvent)	 (err error) {
+	// don't do anything if the channel that was joined was not Announcements
+	if event.Broadcast.ChannelId != announcementsChannel.Id {
+		return
+	}
+	// if debugging is on, print some messages
+	if config.Debugging {
+		fmt.Println("Looks like someone just joined announcements: %v", event.Data )
+		SendMsgToDebuggingChannel("Hey! Someone just joined `announcements`!", "")
+	}
+	// do the actual deleting
+	post := model.PostFromJson(strings.NewReader(event.Data["post"].(string)))
+	sender := event.Data["sender_name"].(string)
+	if (sender + " has joined the channel." == post.Message) || (sender + " has left the channel." == post.Message) {
+		client.DeletePost(post.Id)
+		SendMsgToDebuggingChannel(fmt.Sprintf("Deleted this post: %v", post.Message), "")
+	}
+ return
+}
+
 func HandleTeamJoins(event *model.WebSocketEvent) (err error) {
 	user := event.Data["user_id"].(string)
 
 	teams, _ := client.GetTeamsForUser(user, "")
 	if teams != nil && len(teams) == 1 {
-		if teams[0].Id == botTeam.Id { // if you're a brand new user and on the public team:
+		if teams[0].Id == botTeam.Id { // if there's a brand new user and on the public team...
 			// spin off go routine to wait a bit before sending a direct message
 			go func() {
 				time.Sleep(time.Second * 7)
 				SendDirectMessage(user, "Welcome to the Holochain chat rooms! Here's some instructions and stuff. FIXME")
 			}()
-			//FIXME add user to announcements
+			// and add the user to announcements
+			client.AddChannelMember(announcementsChannel.Id, user)
 		}
 	} else {
-		fmt.Printf("new user in no team or more than one??!!")
+		fmt.Printf("A new user is somehow in no team or more than one team‽‽ That's preposterous!")
 	}
 	return
 }
@@ -326,6 +469,7 @@ func HandleShowAllChannelEvents(event *model.WebSocketEvent) (err error) {
 	// 	return
 	// }
 	if event.Event == model.WEBSOCKET_EVENT_POSTED || event.Event == model.WEBSOCKET_EVENT_CHANNEL_VIEWED {
+		fmt.Printf("I just got this event: \"%v\" with data: \"%v\"\n\n\n", event.Event, event.Data)
 		return
 	}
 	SendMsgToDebuggingChannel(fmt.Sprintf("I just got this event: \"%v\" with data: \"%v\"", event.Event, event.Data), "")
@@ -333,7 +477,7 @@ func HandleShowAllChannelEvents(event *model.WebSocketEvent) (err error) {
 }
 
 func HandleCommands(event *model.WebSocketEvent) (err error) {
-	// If this isn't the debugging channel then lets ingore it
+	// If this isn't the debugging channel then let's ingore it
 		// if event.Broadcast.ChannelId != debuggingChannel.Id {
 		// 	return
 		// }
@@ -365,7 +509,7 @@ func HandleCommands(event *model.WebSocketEvent) (err error) {
 func HandleMsgFromDebuggingChannel(event *model.WebSocketEvent) (err error) {
 	// if debugging mode is on...
 	if config.Debugging {
-		// If this isn't the debugging channel then lets ingore it
+		// If this isn't the debugging channel then let's ingore it
 		if event.Broadcast.ChannelId != debuggingChannel.Id {
 			return
 		}
