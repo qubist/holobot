@@ -104,8 +104,8 @@ func main() {
 	//array of all the actions
 	actions = []Action{
 		Action{Name: "Command Handler", Event: model.WEBSOCKET_EVENT_POSTED, Handler: HandleCommands},
+		Action{Name: "About DM Response", Event: model.WEBSOCKET_EVENT_POSTED, Handler: HandleDMs},
 	}
-
 	// if debug mode is on, activate the Debug Log Channel Handler, and do some other things
 	fmt.Printf("imported config.yaml data:\n%v\n", config)
 	if config.Debugging {
@@ -453,13 +453,40 @@ func HandleTeamJoins(event *model.WebSocketEvent) (err error) {
 			// spin off go routine to wait a bit before sending a direct message
 			go func() {
 				time.Sleep(time.Second * 7)
-				SendDirectMessage(user, "Welcome to the Holochain chat rooms! Here's some instructions and stuff. FIXME")
+				SendDirectMessage(user, `Welcome! I'm **holobot**. I'll help you get started around here.
+
+See those **Public Channels** in the menu on the left? That's where most everything happens around here. Once you're in a channel you can click on the header to get more information about the channel, and how it operates. If you see "?: @someonesname" that means that @someonesname is the **Steward** of that channel. Let the Steward know if you have any questions, or need direction.
+
+I've automatically added you to the **~announcements** channel! This is a low-volume channel for brief, relevant announcements. Posts that aren't announcements in that channel get deleted, so watch out for that. (If you need to respond to an announcement, post in **~town-square** and link back to the announcement.)
+
+Feel free to introduce yourself to everybody in **~town-square,** and click on "More..."  to join all the channels that interest you!
+
+See you around :)`)
 			}()
 			// and add the user to announcements
 			client.AddChannelMember(announcementsChannel.Id, user)
 		}
 	} else {
 		fmt.Printf("A new user is somehow in no team or more than one team‽‽ That's preposterous!")
+	}
+	return
+}
+
+func HandleDMs(event *model.WebSocketEvent) (err error) {
+	name := event.Data["channel_name"].(string)
+	if matched, _ := regexp.MatchString(`(^`+botUser.Id+`__)|(__`+botUser.Id+`$)` , name); matched {
+		post := model.PostFromJson(strings.NewReader(event.Data["post"].(string)))
+		if matched, _ := regexp.MatchString(`(?:^|\W)help(?:$|\W)`, post.Message); matched {
+			SendDirectMessage(post.UserId, `Hi, I'm holobot! I automatically perform various actions to help things run smoother around the team. I can also help you out with commands!
+
+| Command | Description | Usage |
+|---------|-----------------------------------------------------------------------------------------------------------------|----------------------------------------|
+| time | I'll reply with a handy chart translating times you mentioned in your message into various relevant time zones. | *"Meeting at 9 AM EST? @holobot time"* |
+
+If you have questions, feedback, or suggestions, send @will a direct message.
+
+:)`)
+		}
 	}
 	return
 }
