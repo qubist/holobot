@@ -21,6 +21,7 @@ UserName: "holobot"
 UserFirst: "holo"
 UserLast: "bot"
 TeamName: "team-it-should-run-on"
+PublicTeam: true
 LogChannel: "debugging-for-sample-bot"
 Debugging: false
 
