@@ -125,7 +125,7 @@ func main() {
 	if config.PublicTeam {
 		actions = append(actions, Action{Name: "Delete \"Joined\" Alerts",
 															Event: model.WEBSOCKET_EVENT_POSTED,
-															Handler: HandleAnnouncementJoinMessages})
+															Handler: HandleAnnouncementMessages})
 		actions = append(actions, Action{Name: "Welcome Actions - Msg, Add to Announce., etc",
 															Event: model.WEBSOCKET_EVENT_NEW_USER,
 															Handler: HandleTeamJoins})
@@ -424,7 +424,7 @@ func HandleWebSocketResponse(event *model.WebSocketEvent) {
 
 //  Handlers ----------------------------------------------
 
-func HandleAnnouncementJoinMessages(event *model.WebSocketEvent)	 (err error) {
+func HandleAnnouncementMessages(event *model.WebSocketEvent)	 (err error) {
 	// don't do anything if the channel that was joined was not Announcements
 	if event.Broadcast.ChannelId != announcementsChannel.Id {
 		return
@@ -437,31 +437,44 @@ func HandleAnnouncementJoinMessages(event *model.WebSocketEvent)	 (err error) {
 	// do the actual deleting
 	post := model.PostFromJson(strings.NewReader(event.Data["post"].(string)))
 	sender := event.Data["sender_name"].(string)
-	if (sender + " has joined the channel." == post.Message) || (sender + " has left the channel." == post.Message) {
+	if config.Debugging {
+		SendMsgToDebuggingChannel(fmt.Sprintf("Attempting to delete this post: %v\nSender: %v\nconfig.UserName: %v", post.Message, sender, config.UserName), "")
+	}
+	//if the newest message is a join message, and leave message, or an added message, delete it.
+	if matched, _ := regexp.MatchString(`(?:^|\W)((`+sender+` has (joined|left) the channel\.)|(.+ (added to|removed from) the channel by `+config.UserName+`))(?:$)`, post.Message); matched {
+	// if (sender + " has joined the channel." == post.Message) || (sender + " has left the channel." == post.Message) {
 		client.DeletePost(post.Id)
-		SendMsgToDebuggingChannel(fmt.Sprintf("Deleted this post: %v", post.Message), "")
+		if config.Debugging {
+			SendMsgToDebuggingChannel(fmt.Sprintf("Deleted this post: %v", post.Message), "")
+		}
 	}
  return
 }
 
 func HandleTeamJoins(event *model.WebSocketEvent) (err error) {
 	user := event.Data["user_id"].(string)
-
 	teams, _ := client.GetTeamsForUser(user, "")
 	if teams != nil && len(teams) == 1 {
 		if teams[0].Id == botTeam.Id { // if there's a brand new user and on the public team...
 			// spin off go routine to wait a bit before sending a direct message
 			go func() {
 				time.Sleep(time.Second * 7)
-				SendDirectMessage(user, `Welcome! I'm **holobot**. I'll help you get started around here.
-
-See those **Public Channels** in the menu on the left? That's where most everything happens around here. Once you're in a channel you can click on the header to get more information about the channel, and how it operates. If you see "?: @someonesname" that means that @someonesname is the **Steward** of that channel. Let the Steward know if you have any questions, or need direction.
-
-I've automatically added you to the **~announcements** channel! This is a low-volume channel for brief, relevant announcements. Posts that aren't announcements in that channel get deleted, so watch out for that. (If you need to respond to an announcement, post in **~town-square** and link back to the announcement.)
-
-Feel free to introduce yourself to everybody in **~town-square,** and click on "More..."  to join all the channels that interest you!
-
-See you around :)`)
+				// send them the welcome text as a direct message:
+				SendDirectMessage(user,
+"# Welcome! " + "\n" +
+"I'm **holobot**! I'll help you get started around here. Here's some useful info:" + "\n" +
+"#### Channels and Stewards" + "\n" +
+"See those **Public Channels** in the menu on the left? That's where most everything happens around here. Once you're in a channel you can click on the header to get more information about the channel, and how it operates. If you see `?: @someonesname` that means that @someonesname is the **Steward** of that channel. Let the Steward know if you have any questions, or need direction." + "\n" +
+"#### Announcements Channel" + "\n" +
+"I've automatically added you to the **~announcements** channel! This is a low-volume channel for brief, relevant announcements. Posts that aren't announcements in that channel get deleted, so watch out for that. (If you need to respond to an announcement, post in **~town-square** and either link back to the announcement, or quote it by prepending it with `> `.)" + "\n" +
+"#### Q&A Channels" + "\n" +
+"Channels beginning with `❓` — like ~holo-currency-qa, ~holochain-tech-qa, and ~holoport-host-qa — are specially designated Q&A channels. If you've got a question, check to see if the relevant Q&A channel answers it, and then go ahead and post there." + "\n" +
+"#### Mattermost Tips" + "\n" +
+"* Click the star next to a channel's title to favorite it. Favorited channels appear at the top of your list." + "\n" +
+"* Press Ctrl-K/Cmd-K to open a search box to type and quickly jump to a channel." + "\n" +
+"***" + "\n" +
+"It's good to have you here! Feel free to introduce yourself to everybody in **~town-square,** and click on `More...` to join all the channels that interest you!" + "\n" +
+"See you around :)")
 			}()
 			// and add the user to announcements
 			client.AddChannelMember(announcementsChannel.Id, user)
