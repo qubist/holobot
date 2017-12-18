@@ -495,11 +495,12 @@ func HandleDMs(event *model.WebSocketEvent) (err error) {
 		// if the message contains the string "help"
 		if matched, _ := regexp.MatchString(`(?i)(?:^|\W)help(?:$|\W)`, post.Message); matched {
 			SendDirectMessage(post.UserId,
-"Hi, I'm holobot! I automatically perform various actions to help things run smoother around the team. I can also help you out with commands!" + "\n" +
-"Use a command by typing `@holobot` followed by the command's name. For example, typing `@holobot time` will execute my \"time\" command."+ "\n" + "\n" +
-"| Command | Description | Usage |" + "\n" +
-"|---------|-------------|-------|" + "\n" +
-"| `time`  | I'll reply with a handy chart translating times you mentioned in your message into various relevant time zones. | *Does a meeting at 9 AM EST work for everyone? @holobot time* |" + "\n" + "\n" +
+"Hi, I'm holobot! I cheerfully and automatically perform various actions to help things run smoother around the team. I can also help you out with commands!" + "\n" +
+"Use a command by typing `@holobot` followed by the command's name. For example, typing `@holobot time` will execute my \"time\" command. Note: I'm only able to execute commands in public channels, private channels I'm a part of, and direct messages with me. I cant read your direct messages."+ "\n" + "\n" +
+// I'm using these non-breaking spaces as a hacky way of making the usage exapmles not wrap at the space inbetween "@holobot" and the command (ex. "time")
+"| Command | Description |    Usage&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  | Example |" + "\n" +
+"|---------|-------------|---|---|" + "\n" +
+"| `time`  | I'll reply with a handy table translating the times you mentioned in your message into various relevant time zones. | `@holobot time` | *Does a meeting at 9 AM EST work for everyone? @holobot time* |" + "\n" + "\n" +
 "If you have questions, feedback, or suggestions, send @will a direct message. :)")
 		}
 		// if the message contains the string "mattermost tips"
