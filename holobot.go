@@ -492,8 +492,8 @@ func HandleDMs(event *model.WebSocketEvent) (err error) {
 	// if the new post is in a DM channel to the bot
 	if matched, _ := regexp.MatchString(`(^`+botUser.Id+`__)|(__`+botUser.Id+`$)` , name); matched {
 		post := model.PostFromJson(strings.NewReader(event.Data["post"].(string)))
-		// if the message contains the string "help"
-		if matched, _ := regexp.MatchString(`(?i)(?:^|\W)help(?:$|\W)`, post.Message); matched {
+		// if the message contains the string "help", "halp", or a variotion of "who are you?"
+		if matched, _ := regexp.MatchString(`(?i)(?:^|\W)help|halp|who are you[\?]?(?:$|\W)`, post.Message); matched {
 			SendDirectMessage(post.UserId,
 "Hi, I'm holobot! I cheerfully and automatically perform various actions to help things run smoother around the team. I can also help you out with commands!" + "\n" +
 "Use a command by typing `@holobot` followed by the command's name. For example, typing `@holobot time` will execute my \"time\" command. Note: I'm only able to execute commands in public channels, private channels I'm a part of, and direct messages with me. I cant read your direct messages."+ "\n" + "\n" +
