@@ -126,7 +126,7 @@ func main() {
 		actions = append(actions, Action{Name: "Delete \"Joined\" Alerts",
 															Event: model.WEBSOCKET_EVENT_POSTED,
 															Handler: HandleAnnouncementMessages})
-		actions = append(actions, Action{Name: "Welcome Actions - Msg, Add to Announce., etc",
+		actions = append(actions, Action{Name: "Welcome Actions—Msg, Add to Announce., etc",
 															Event: model.WEBSOCKET_EVENT_NEW_USER,
 															Handler: HandleTeamJoins})
 	}
@@ -469,6 +469,8 @@ func HandleTeamJoins(event *model.WebSocketEvent) (err error) {
 "I've automatically added you to the **~announcements** channel! This is a low-volume channel for brief, relevant announcements. Posts that aren't announcements in that channel get deleted, so watch out for that. (If you need to respond to an announcement, post in **~town-square** and either link back to the announcement, or quote it by prepending it with `> `.)" + "\n" +
 "##### Q&A Channels" + "\n" +
 "Channels beginning with `❓`—like ~holo-currency-qa, ~holochain-tech-qa, and ~holoport-host-qa—are specially designated Q&A channels. If you've got a question, check to see if the relevant Q&A channel answers it, and then go ahead and post there." + "\n" +
+"##### Other Channels" + "\n" +
+"The ~app-ideas channel is a great place to post possible applications of the Holochain technology and brainstorm how potential apps would look, work, and feel. The ~app-dev channel is good for discussing Holochain applications in active states of development." + "\n" +
 "##### A Few Mattermost Tips" + "\n" +
 "* Click the tiny reply arrow icon on a post to **reply** directly to it. This pulls up the thread in the pane on the right. Replies show up in the channel as new posts replying to older posts, with a backlink you can click to pull up the entire thread for easy review." + "\n" +
 "* Click the star next to a channel's title to **favorite** it. Favorited channels appear at the top of your list." + "\n" +
