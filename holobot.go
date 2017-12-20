@@ -112,7 +112,7 @@ func main() {
 		Action{Name: "About DM Response", Event: model.WEBSOCKET_EVENT_POSTED, Handler: HandleDMs},
 	}
 	// if debug mode is on, activate the Debug Log Channel Handler, and do some other things
-	fmt.Printf("imported config.yaml data:\n%v\n", config)
+	//fmt.Printf("imported config.yaml data:\n%v\n", config)
 	if config.Debugging {
 		println("DEGUBBING IS ON, BOIS")
 		actions = append(actions, Action{Name: "Debug Log Channel Handler",
