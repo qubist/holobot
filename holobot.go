@@ -15,17 +15,18 @@ import (
 )
 
 type Config struct {
-	LongName     string
-	UserName     string
-	UserEmail    string
-	UserFirst    string
-	UserLast     string
-	UserPassword string
-	TeamName     string
-	PublicTeam   bool
-	LogChannel   string
-	Domain       string
-	Debugging    bool
+	LongName          string
+	UserName          string
+	UserEmail         string
+	UserFirst         string
+	UserLast          string
+	UserPassword      string
+	PublicTeamName    string
+	PrivateTeamName   string
+	DebuggingTeamName string
+	LogChannel        string
+	Domain            string
+	Debugging         bool
 }
 
 var config Config
@@ -33,7 +34,7 @@ var client *model.Client4
 var webSocketClient *model.WebSocketClient
 
 var botUser *model.User
-var botTeam *model.Team
+var publicTeam, privateTeam, debuggingTeam *model.Team
 var debuggingChannel *model.Channel
 var townsquareChannel *model.Channel
 var announcementsChannel *model.Channel
@@ -97,19 +98,21 @@ func main() {
 	UpdateTheBotUserIfNeeded()
 
 	// Let's find our teams
-	botTeam = FindTeam(config.TeamName)
+	publicTeam = FindTeam(config.PublicTeamName)
+	privateTeam = FindTeam(config.PrivateTeamName)
+	debuggingTeam = FindTeam(config.DebuggingTeamName)
 
-	// This is an important step.  Let's make sure we use the botTeam
-	// for all future web service requests that require a team.
-	//client.SetTeamId(botTeam.Id)
-
-	GetAnnouncements()
-	GetTownSquare()
+	announcementsChannel = FindChannel("announcements", publicTeam)
+	if announcementsChannel == nil {
+		return
+	}
 
 	//array of all the actions
 	actions = []Action{
 		Action{Name: "Command Handler", Event: model.WEBSOCKET_EVENT_POSTED, Handler: HandleCommands},
 		Action{Name: "About DM Response", Event: model.WEBSOCKET_EVENT_POSTED, Handler: HandleDMs},
+		Action{Name: "Delete \"Joined\" Alerts", Event: model.WEBSOCKET_EVENT_POSTED, Handler: HandleAnnouncementMessages},
+		Action{Name: "Welcome Actions—Msg, Add to Announce., etc", Event: model.WEBSOCKET_EVENT_NEW_USER, Handler: HandleTeamJoins},
 	}
 	// if debug mode is on, activate the Debug Log Channel Handler, and do some other things
 	//fmt.Printf("imported config.yaml data:\n%v\n", config)
@@ -124,16 +127,6 @@ func main() {
 		// Let's create a bot channel for logging debug messages into
 		CreateBotDebuggingChannelIfNeeded()
 		SendMsgToDebuggingChannel("_"+config.LongName+" has **started** running_", "")
-	}
-
-	// add public team actions only if running in the public team
-	if config.PublicTeam {
-		actions = append(actions, Action{Name: "Delete \"Joined\" Alerts",
-			Event:   model.WEBSOCKET_EVENT_POSTED,
-			Handler: HandleAnnouncementMessages})
-		actions = append(actions, Action{Name: "Welcome Actions—Msg, Add to Announce., etc",
-			Event:   model.WEBSOCKET_EVENT_NEW_USER,
-			Handler: HandleTeamJoins})
 	}
 
 	commands = []Command{
@@ -332,43 +325,31 @@ func FindTeam(name string) *model.Team {
 	return team
 }
 
-func GetAnnouncements() {
-	if rchannel, resp := client.GetChannelByName("announcements", botTeam.Id, ""); resp.Error != nil {
-		println("We failed to get the annoucements channel")
+func FindChannel(name string, team *model.Team) *model.Channel {
+	rchannel, resp := client.GetChannelByName(name, team.Id, "")
+	if resp.Error != nil {
+		fmt.Printf("We failed to get the %v channel", name)
 		PrintError(resp.Error)
 	} else {
-		announcementsChannel = rchannel
 		if config.Debugging {
-			fmt.Println("Announcements channel gotten as: ", rchannel)
+			fmt.Printf("%v channel gotten as: %v", name, rchannel)
 		}
 	}
-}
-
-func GetTownSquare() {
-	if rchannel, resp := client.GetChannelByName("town-square", botTeam.Id, ""); resp.Error != nil {
-		println("We failed to get the town-square channel")
-		PrintError(resp.Error)
-	} else {
-		townsquareChannel = rchannel
-	}
+	return rchannel
 }
 
 func CreateBotDebuggingChannelIfNeeded() {
-	if rchannel, resp := client.GetChannelByName(config.LogChannel, botTeam.Id, ""); resp.Error != nil {
-		println("We failed to get the channels")
-		PrintError(resp.Error)
-	} else {
-		debuggingChannel = rchannel
+	debuggingChannel = FindChannel(config.LogChannel, debuggingTeam)
+	if debuggingChannel != nil {
 		return
 	}
-
 	// Looks like we need to create the logging channel
 	channel := &model.Channel{}
 	channel.Name = config.LogChannel
 	channel.DisplayName = "Debugging For Sample Bot"
 	channel.Purpose = "This is used as a test channel for logging bot debug messages"
 	channel.Type = model.CHANNEL_OPEN
-	channel.TeamId = botTeam.Id
+	channel.TeamId = debuggingTeam.Id
 	if rchannel, resp := client.CreateChannel(channel); resp.Error != nil {
 		println("We failed to create the channel " + config.LogChannel)
 		PrintError(resp.Error)
@@ -457,12 +438,16 @@ func HandleAnnouncementMessages(event *model.WebSocketEvent) (err error) {
 
 func HandleTeamJoins(event *model.WebSocketEvent) (err error) {
 	user := event.Data["user_id"].(string)
-	teams, _ := client.GetTeamsForUser(user, "")
-	if teams != nil && len(teams) == 1 {
-		if teams[0].Id == botTeam.Id { // if there's a brand new user and on the public team...
-			// spin off go routine to wait a bit before sending a direct message
-			go func() {
-				time.Sleep(time.Second * 7)
+	go func() { // spin off go routine to wait a bit before welcoming them
+		time.Sleep(time.Second * 13)
+		teams, _ := client.GetTeamsForUser(user, "")
+		if config.Debugging {
+			fmt.Printf("teams: %v\npublicTeam: %v\n", teams, publicTeam)
+		}
+		if teams != nil && len(teams) == 1 {
+			println("USER IS IN EXACTLY ONE TEAM! (yuss)\n")
+			if teams[0].Id == publicTeam.Id { // if the user is brand new user, and only on the public team...
+				fmt.Printf("USER's ONE TEAM IS: %v\n", publicTeam)
 				// send them the welcome text as a direct message:
 				SendDirectMessage(user,
 					"# Welcome! "+"\n"+
@@ -483,13 +468,14 @@ func HandleTeamJoins(event *model.WebSocketEvent) (err error) {
 						"***"+"\n"+
 						"It's good to have you here! Feel free to introduce yourself to everybody in **~town-square,** and click on `More...` to join all the channels that interest you!"+"\n"+
 						"See you around :)")
-			}()
-			// and add the user to announcements
-			client.AddChannelMember(announcementsChannel.Id, user)
+				// and add the user to announcements
+				client.AddChannelMember(announcementsChannel.Id, user)
+			}
+		} else {
+			fmt.Printf("A new user is somehow in no team or more than one team‽‽ That's preposterous!\n")
+			fmt.Printf("Teams data: %v\n", teams)
 		}
-	} else {
-		fmt.Printf("A new user is somehow in no team or more than one team‽‽ That's preposterous!")
-	}
+	}()
 	return
 }
 
@@ -502,7 +488,7 @@ func HandleDMs(event *model.WebSocketEvent) (err error) {
 		if matched, _ := regexp.MatchString(`(?i)(?:^|\W)help|halp|who are you[\?]?(?:$|\W)`, post.Message); matched {
 			SendDirectMessage(post.UserId,
 				"Hi, I'm holobot! I cheerfully and automatically perform various actions to help things run smoother around the team. I can also help you out with commands!"+"\n"+
-					"Use a command by typing `@holobot` followed by the command's name. For example, typing `@holobot time` will execute my \"time\" command. Note: I'm only able to execute commands in public channels, private channels I'm a part of, and direct messages with me. I cant read your direct messages."+"\n"+"\n"+
+					"Use a command by typing `@holobot` followed by the command's name. For example, typing `@holobot time` will execute my \"time\" command.\nNote: I'm only able to execute commands in channels I'm a part of and direct messages with me. You can add me to your channel by clicking on the channel header and then on `Add Members` I cant read your direct messages."+"\n"+"\n"+
 					// I'm using these non-breaking spaces as a hacky way of making the usage exapmles not wrap at the space inbetween "@holobot" and the command (ex. "time")
 					"| Command | Description |    Usage&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  | Example |"+"\n"+
 					"|---------|-------------|---|---|"+"\n"+
@@ -520,7 +506,7 @@ func HandleDMs(event *model.WebSocketEvent) (err error) {
 					"* Click the `@` icon next to the flag icon to see a list of **mentions** of you. You can change what will trigger a mention in Account Settings > Notifications."+"\n"+
 					"* Use emojis to **react** to posts without triggering a notification or making people read more text. Reactions are also sometimes used for voting or polling."+"\n"+
 					"* **Channel headers** can list links to core founding documents and key locations for each channel."+"\n"+
-					"* Click a user's **profile picture** to see their info or send them a private message."+"\n"+
+					"* Click a user's **profile picture** to see their info or send them a direct message."+"\n"+
 					"* **Mention** someone with `@username`. `@username` will always trigger a mention for them. Using someone's first name can also trigger a mention, depending on their settings."+"\n"+
 					"* `@channel` and `@all` trigger **channel-wide mentions** that notify everyone in the channel. Use these sparingly and in the most specific relevant channel to avoid triggering mentions for unrelated people."+"\n"+
 					"* You can use specific rules to render messages with special **formatting.** Check [Mattermost's formatting guide](https://docs.mattermost.com/help/messaging/formatting-text.html) for detailed documentation of all these rules."+"\n"+
@@ -534,7 +520,7 @@ func HandleShowAllChannelEvents(event *model.WebSocketEvent) (err error) {
 	// if event.Broadcast.ChannelId != debuggingChannel.Id {
 	// 	return
 	// }
-	if event.Event == model.WEBSOCKET_EVENT_POSTED || event.Event == model.WEBSOCKET_EVENT_CHANNEL_VIEWED {
+	if event.Event == model.WEBSOCKET_EVENT_POSTED || event.Event == model.WEBSOCKET_EVENT_CHANNEL_VIEWED || event.Event == model.WEBSOCKET_EVENT_TYPING {
 		fmt.Printf("I just got this event: \"%v\" with data: \"%v\"\n\n\n", event.Event, event.Data)
 		return
 	}
@@ -547,8 +533,9 @@ func HandleCommands(event *model.WebSocketEvent) (err error) {
 	// if event.Broadcast.ChannelId != debuggingChannel.Id {
 	// 	return
 	// }
-
-	println("checking for commands via HandleCommands")
+	if config.Debugging {
+		println("checking for commands via HandleCommands")
+	}
 	post := model.PostFromJson(strings.NewReader(event.Data["post"].(string)))
 	if post != nil {
 		// ignore my events

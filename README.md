@@ -18,10 +18,11 @@ LongName: "Mattermost Bot Sample"
 UserEmail: "your@email.here"
 UserPassword: "somepasswordhere"
 UserName: "imabot"
-UserFirst: "Im A."
-UserLast: "Bot"
-TeamName: "team-it-should-run-on"
-PublicTeam: true
+UserFirst: "Im A"
+UserLast: "Bot."
+PublicTeamName: "name-of-public-team"
+PrivateTeamName: "name-of-private-team"
+DebuggingTeamName: "name-of-debugging-team"
 LogChannel: "debugging-for-sample-bot"
 Debugging: false
 
