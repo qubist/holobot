@@ -487,9 +487,10 @@ func HandleDMs(event *model.WebSocketEvent) (err error) {
 		// if the message contains the string "help", "halp", or a variotion of "who are you?"
 		if matched, _ := regexp.MatchString(`(?i)(?:^|\W)help|halp|who are you[\?]?(?:$|\W)`, post.Message); matched {
 			SendDirectMessage(post.UserId,
-				"Hi, I'm holobot! I cheerfully and automatically perform various actions to help things run smoother around the team. I can also help you out with commands!"+"\n"+
-					"Use a command by typing `@holobot` followed by the command's name. For example, typing `@holobot time` will execute my \"time\" command.\nNote: I'm only able to execute commands in channels I'm a part of and direct messages with me. You can add me to your channel by clicking on the channel header and then on `Add Members` I cant read your direct messages."+"\n"+"\n"+
-					// I'm using these non-breaking spaces as a hacky way of making the usage exapmles not wrap at the space inbetween "@holobot" and the command (ex. "time")
+				"Hi, I'm holobot! I cheerfully and automatically perform various actions to help things run smoother around the team. I can also help you out with commands!"+"\n"+"\n"+
+					"Use a command by typing `@holobot` followed by the command's name. For example, typing `@holobot time` will execute my \"time\" command."+"\n"+"\n"+
+					"Note: I'm only able to execute commands in channels I'm a part of, and in direct messages with me. You can add me to your channel by clicking on the channel header and then on `Add Members` I cant read your direct messages."+"\n"+"\n"+
+					// I'm using this ridiculous number of non-breaking spaces as a hacky (read: very very hacky) way of making the usage exapmles not wrap at the space inbetween "@holobot" and the command (ex. "time")
 					"| Command | Description |    Usage&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  | Example |"+"\n"+
 					"|---------|-------------|---|---|"+"\n"+
 					"| `time`  | I'll reply with a handy table translating the times you mentioned in your message into various relevant time zones. | `@holobot time` | *Does a meeting at 9 AM EST work for everyone? @holobot time* |"+"\n"+"\n"+
