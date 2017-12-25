@@ -209,7 +209,13 @@ func main() {
 						if err == nil {
 							l, err = time.LoadLocation(loc)
 							if err == nil {
-								t, err = time.ParseInLocation(layout, strings.ToUpper(input), l)
+								// gotta give it today's date so it works correctly
+								now := time.Now()
+								date := now.Format("01/02/2006 ")
+								t, err = time.ParseInLocation("01/02/2006 "+layout, date+strings.ToUpper(input), l)
+								if err != nil {
+									fmt.Printf("error parsing time: %v\n", err)
+								}
 							}
 						}
 
