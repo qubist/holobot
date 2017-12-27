@@ -151,7 +151,7 @@ func main() {
 			Description: "Displays times mentioned in the message in various relevant time zones.",
 			Handler: func(event *model.WebSocketEvent, post *model.Post) error {
 				//regex to match valid times with time zones (ex. "1 GMT", "2:00 AM EST", "15:00 PT", etc.)
-				re := regexp.MustCompile(`([0-9]+)(:[0-9]+)* *([paPA][mM])* *([a-zA-Z]+)((\+|\-)([0-9]+))*`)
+				re := regexp.MustCompile(`([0-9]{1,2})(:[0-9]{1,2})? *([paPA][mM])? *([a-zA-Z]{1,3}T)((\+|\-)([0-9]{1,2})\s)?`)
 				if matches := re.FindAllStringSubmatch(post.Message, -1); matches != nil {
 					for _, m := range matches {
 						layout := "15"
@@ -163,6 +163,9 @@ func main() {
 						if len(m) > 3 && m[3] != "" {
 							layout += "PM"
 							input += m[3]
+							if len(m[3]) == 1 {
+								input += "M"
+							}
 						}
 
 						// determine location from input
@@ -190,7 +193,7 @@ func main() {
 							loc = m[4] //default
 						}
 						if m[5] != "" { // if there's a plus or minus on the time zone,
-							if strings.ToUpper(m[4]) == "GMT" { // and it's GMT,
+							if strings.ToUpper(m[4]) == "GMT" { // if timezone is GMT,
 								loc = "Etc/GMT" // set location to GMT plus whatever was in the input
 								if m[6] == "+" {
 									loc += "-" + m[7]
@@ -491,7 +494,7 @@ func HandleDMs(event *model.WebSocketEvent) (err error) {
 	if matched, _ := regexp.MatchString(`(^`+botUser.Id+`__)|(__`+botUser.Id+`$)`, name); matched {
 		post := model.PostFromJson(strings.NewReader(event.Data["post"].(string)))
 		// if the message contains the string "help", "halp", or a variotion of "who are you?"
-		if matched, _ := regexp.MatchString(`(?i)(?:^|\W)help|halp|who are you[\?]?(?:$|\W)`, post.Message); matched {
+		if matched, _ := regexp.MatchString(`(?i)(?:^|\W)help|halp|who are you(?:$|\W)`, post.Message); matched {
 			SendDirectMessage(post.UserId,
 				"Hi, I'm holobot! I cheerfully and automatically perform various actions to help things run smoother around the team. I can also help you out with commands!"+"\n"+"\n"+
 					"Use a command by typing `@holobot` followed by the command's name. For example, typing `@holobot time` will execute my \"time\" command."+"\n"+"\n"+
