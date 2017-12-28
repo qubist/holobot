@@ -151,7 +151,7 @@ func main() {
 			Description: "Displays times mentioned in the message in various relevant time zones.",
 			Handler: func(event *model.WebSocketEvent, post *model.Post) error {
 				//regex to match valid times with time zones (ex. "1 GMT", "2:00 AM EST", "15:00 PT", etc.)
-				re := regexp.MustCompile(`([0-9]{1,2})(:[0-9]{1,2})? *([paPA][mM])? *([a-zA-Z]{1,3}T)((\+|\-)([0-9]{1,2})\s)?`)
+				re := regexp.MustCompile(`([0-9]{1,2})(:[0-9]{1,2})? *([paPA][mM])? +([A-Z][a-zA-Z]+)((\+|\-)([0-9]{1,2})\s)?`)
 				if matches := re.FindAllStringSubmatch(post.Message, -1); matches != nil {
 					for _, m := range matches {
 						layout := "15"
