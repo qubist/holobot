@@ -243,12 +243,14 @@ func main() {
 							gmt := t.In(gmtl).Format("15:04")
 							cetl, _ := time.LoadLocation("CET")
 							cet := t.In(cetl).Format("15:04")
+							istl, _ := time.LoadLocation("Asia/Kolkata")
+							ist := t.In(istl).Format("3:04 PM")
 							// and prints them in a table
 							timeZoneText = fmt.Sprintf(`"%s" is:
 
-|   PT    |   MT   |   CT   |   ET   |  GMT   |  CET   |
-|:-------:|:------:|:------:|:------:|:------:|:------:|
-|   %s    |   %s   |   %s   |   %s   |   %s   |   %s   |`, m[0], pt, mt, ct, et, gmt, cet)
+|   PT    |   MT   |   CT   |   ET   |  GMT   |  CET   |  IST   |
+|:-------:|:------:|:------:|:------:|:------:|:------:|:------:|
+|   %s    |   %s   |   %s   |   %s   |   %s   |   %s   |   %s   |`, m[0], pt, mt, ct, et, gmt, cet, ist)
 
 							// make a debugging message with extra info about the above processes
 							debuggingTimeZoneText = fmt.Sprintf("➚ *Debugging Info:*\n(%v)\nTime zone I heard (m[4]) was: %v\nLocation (l): %v", t, m[4], l)
