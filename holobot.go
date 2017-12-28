@@ -219,6 +219,8 @@ func main() {
 								if err != nil {
 									fmt.Printf("error parsing time: %v\n", err)
 								}
+							} else {
+								fmt.Printf("Error loading location %s: %v\n", loc, err)
 							}
 						}
 
