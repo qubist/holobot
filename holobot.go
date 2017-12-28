@@ -184,7 +184,7 @@ func main() {
 						case "GMT", "UTC", "GREENWICH":
 							loc = "etc/UTC"
 						case "CHINA", "SHANGHAI", "BEIJING":
-							loc = "China/Shanghai"
+							loc = "Asia/Shanghai"
 						case "ECT", "QUITO", "ECUADOR":
 							loc = "America/Guayaquil"
 						case "IST", "INDIAN", "INDIA":
