@@ -179,13 +179,13 @@ func main() {
 							loc = "America/Denver"
 						case "CST", "CT", "CENTRAL":
 							loc = "America/Chicago"
-						case "EST", "ET", "EASTERN":
+						case "EST", "ET", "EASTERN", "EAST":
 							loc = "America/New_York"
 						case "GMT", "UTC", "GREENWICH":
 							loc = "etc/UTC"
-						case "CHINA", "SHANGHAI", "BEIJING":
+						case "CHINA", "CHINESE", "SHANGHAI", "BEIJING":
 							loc = "Asia/Shanghai"
-						case "ECT", "QUITO", "ECUADOR":
+						case "ECT", "QUITO", "ECUADOR", "ECUADORIAN":
 							loc = "America/Guayaquil"
 						case "IST", "INDIAN", "INDIA":
 							loc = "Asia/Kolkata"
