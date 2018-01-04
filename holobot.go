@@ -452,7 +452,7 @@ func HandleAnnouncementMessages(event *model.WebSocketEvent) (err error) {
 func HandleTeamJoins(event *model.WebSocketEvent) (err error) {
 	user := event.Data["user_id"].(string)
 	go func() { // spin off go routine to wait a bit before welcoming them
-		time.Sleep(time.Second * 13)
+		time.Sleep(time.Second * 55)
 		teams, _ := client.GetTeamsForUser(user, "")
 		if config.Debugging {
 			fmt.Printf("teams: %v\npublicTeam: %v\n", teams, publicTeam)
