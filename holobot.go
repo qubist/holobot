@@ -114,6 +114,7 @@ func main() {
 		Action{Name: "About DM Response", Event: model.WEBSOCKET_EVENT_POSTED, Handler: HandleDMs},
 		Action{Name: "Delete \"Joined\" Alerts", Event: model.WEBSOCKET_EVENT_POSTED, Handler: HandleAnnouncementMessages},
 		Action{Name: "Welcome Actions—Msg, Add to Announce., etc", Event: model.WEBSOCKET_EVENT_NEW_USER, Handler: HandleTeamJoins},
+		Action{Name: "Delete Own Message", Event: model.WEBSOCKET_EVENT_REACTION_ADDED, Handler: HandleReactions},
 	}
 	// if debug mode is on, activate the Debug Log Channel Handler, and do some other things
 	//fmt.Printf("imported config.yaml data:\n%v\n", config)
@@ -527,6 +528,30 @@ func HandleDMs(event *model.WebSocketEvent) (err error) {
 					"* `@channel` and `@all` trigger **channel-wide mentions** that notify everyone in the channel. Use these sparingly and in the most specific relevant channel to avoid triggering mentions for unrelated people."+"\n"+
 					"* You can use specific rules to render messages with special **formatting.** Check [Mattermost's formatting guide](https://docs.mattermost.com/help/messaging/formatting-text.html) for detailed documentation of all these rules."+"\n"+
 					"* **Pin** posts that are announcements or have long-term value for a channel. To pin a post, mouse over the post, then click the tiny `[...]` icon which appears to access the menu, then click `Pin to channel`. To view all the pinned posts in a channel, click the thumbtack icon to the left of the search bar.")
+		}
+	}
+	return
+}
+
+func HandleReactions(event *model.WebSocketEvent) (err error) {
+	//fmt.Printf("Event data: %v\n\n", event.Data)
+	reaction := model.ReactionFromJson(strings.NewReader(event.Data["reaction"].(string)))
+	post, _ := client.GetPost(reaction.PostId, "")
+	// Debugging I was doing to find out what information I needed and how to get it:
+	// SendMsgToDebuggingChannel(fmt.Sprintf("Emoji name: %v\nPost Id: %v\nPost: %v", reaction.EmojiName, reaction.PostId, post), "")
+
+	// Check if the post was made by holobot
+	if post.UserId == botUser.Id {
+		if config.Debugging {
+			SendMsgToDebuggingChannel("Reaction to holobot detected!!", "")
+		}
+		// If it was, check if the reaction was :x:
+		if reaction.EmojiName == "x" {
+			// If it was, delete the post
+			client.DeletePost(post.Id)
+			if config.Debugging {
+				fmt.Printf("Deleted this post due to \"x\" reaction: %v\n", post)
+			}
 		}
 	}
 	return
