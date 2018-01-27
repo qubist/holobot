@@ -469,7 +469,7 @@ func HandleTeamJoins(event *model.WebSocketEvent) (err error) {
 					"# Welcome! "+"\n"+
 						"I'm **holobot**! I'll help you get started around here. Here's some useful info:"+"\n"+
 						"##### Channels and Stewards"+"\n"+
-						"See those **Public Channels** in the menu on the left? That's where most everything happens around here. Once you're in a channel you can click on the header to see information about the channel's purpose, and how it operates. Click on the `ℹ️` for an even more detailed info sheet, where you'll find a list of the **Stewards** for that channel. Let the Steward know if you have any questions, or need direction."+"\n"+
+						"See those **Public Channels** in the menu on the left? That's where most everything happens around here. Once you're in a channel you can click on the header to see information about the channel's purpose, and how it operates. The users after the `?:` in the channel header are the the **Stewards** for that channel. Let the Steward know if you have any questions, or need direction."+"\n"+
 						"##### The Announcements Channel"+"\n"+
 						"I've automatically added you to the **~announcements** channel! This is a low-volume channel for brief, relevant announcements. Posts that aren't announcements in that channel get deleted, so watch out for that. (If you need to respond to an announcement, post in **~town-square** and either link back to the announcement, or quote it by prepending it with `> `.)"+"\n"+
 						"##### Q&A Channels"+"\n"+
