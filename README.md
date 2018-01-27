@@ -1,4 +1,4 @@
-# Mattermost HoloBot
+# Mattermost holobot
 
 This code is based on : https://github.com/mattermost/mattermost-bot-sample-golang
 
@@ -49,3 +49,17 @@ You can verify the Bot is running when
 ## Stop the Bot
 
 1 - In the terminal window, press `CTRL+C` to stop the bot. You should see `Mattermost Bot Sample has stopped running` posted in the `Debugging For Sample Bot` channel.
+
+## Feature Ideas
+* *Italic* means they've beed added
+
+### Commands:
+* *time - translate a time to various time zones*
+* move - move a conversation to a different channel
+
+### Other Features:
+* *Anyone can react with :x: to delete one of holobot's comments*
+
+### Ideas:
+* React with police car to any message to alert steward
+* better voting infrastructure
