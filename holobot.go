@@ -128,7 +128,7 @@ func main() {
 
 		// Let's create a bot channel for logging debug messages into
 		CreateBotDebuggingChannelIfNeeded()
-		SendMsgToDebuggingChannel("_"+config.LongName+" has **started** running_", "")
+		SendMsgToChannel(debuggingChannel.Id, "_"+config.LongName+" has **started** running_", "")
 	}
 
 	commands = []Command{
@@ -376,7 +376,9 @@ func CreateBotDebuggingChannelIfNeeded() {
 }
 
 func SendMsgToDebuggingChannel(msg string, replyToId string) {
-	SendMsgToChannel(debuggingChannel.Id, msg, replyToId)
+	if config.Debugging {
+		SendMsgToChannel(debuggingChannel.Id, msg, replyToId)
+	}
 }
 
 func SendMsgToChannel(channel string, msg string, replyToId string) {
@@ -438,16 +440,12 @@ func HandleAnnouncementMessages(event *model.WebSocketEvent) (err error) {
 	// do the actual deleting
 	post := model.PostFromJson(strings.NewReader(event.Data["post"].(string)))
 	sender := event.Data["sender_name"].(string)
-	if config.Debugging {
-		SendMsgToDebuggingChannel(fmt.Sprintf("Attempting to delete this post: %v\nSender: %v\nconfig.UserName: %v", post.Message, sender, config.UserName), "")
-	}
+	SendMsgToDebuggingChannel(fmt.Sprintf("Checking to see if this post is a join or leave message: %v\nSender: %v\nconfig.UserName: %v", post.Message, sender, config.UserName), "")
 	//if the newest message is a join message, and leave message, or an added message, delete it.
 	if matched, _ := regexp.MatchString(`(?:^|\W)((`+sender+` has (joined|left) the channel\.)|(.+ (added to|removed from) the channel by `+config.UserName+`))(?:$)`, post.Message); matched {
 		// if (sender + " has joined the channel." == post.Message) || (sender + " has left the channel." == post.Message) {
 		client.DeletePost(post.Id)
-		if config.Debugging {
-			SendMsgToDebuggingChannel(fmt.Sprintf("Deleted this post: %v", post.Message), "")
-		}
+		SendMsgToDebuggingChannel(fmt.Sprintf("Deleted this post: %v", post.Message), "")
 	}
 	return
 }
@@ -542,9 +540,7 @@ func HandleReactions(event *model.WebSocketEvent) (err error) {
 
 	// Check if the post was made by holobot
 	if post.UserId == botUser.Id {
-		if config.Debugging {
-			SendMsgToDebuggingChannel("Reaction to holobot detected!!", "")
-		}
+		SendMsgToDebuggingChannel("Reaction to holobot detected!!", "")
 		// If it was, check if the reaction was :x:
 		if reaction.EmojiName == "x" {
 			// If it was, delete the post
@@ -664,9 +660,7 @@ func SetupGracefulShutdown() {
 			if webSocketClient != nil {
 				webSocketClient.Close()
 			}
-			if config.Debugging {
-				SendMsgToDebuggingChannel("_"+config.LongName+" has **stopped** running_", "")
-			}
+			SendMsgToDebuggingChannel("_"+config.LongName+" has **stopped** running_", "")
 			os.Exit(0)
 		}
 	}()
