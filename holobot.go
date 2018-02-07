@@ -253,7 +253,7 @@ func main() {
 |   %s    |   %s   |   %s   |   %s   |   %s   |   %s   |   %s   |`, m[0], pt, mt, ct, et, gmt, cet, ist)
 
 							// make a debugging message with extra info about the above processes
-							debuggingTimeZoneText = fmt.Sprintf("➚ *Debugging Info:*\n(%v)\nTime zone I heard (m[4]) was: %v\nLocation (l): %v", t, m[4], l)
+							debuggingTimeZoneText = fmt.Sprintf("➚ **Debugging Info:**\n(%v)\nTime zone I heard (m[4]) was: %v\nLocation (l): %v", t, m[4], l)
 						}
 						SendMsgToChannel(event.Broadcast.ChannelId, timeZoneText, post.Id)
 						// send debugging message if debugging is turned on
