@@ -112,7 +112,7 @@ func main() {
 	actions = []Action{
 		Action{Name: "Command Handler", Event: model.WEBSOCKET_EVENT_POSTED, Handler: HandleCommands},
 		Action{Name: "About DM Response", Event: model.WEBSOCKET_EVENT_POSTED, Handler: HandleDMs},
-		Action{Name: "Delete \"Joined\" Alerts", Event: model.WEBSOCKET_EVENT_POSTED, Handler: HandleAnnouncementMessages},
+		Action{Name: "Delete Non-announcement", Event: model.WEBSOCKET_EVENT_POSTED, Handler: HandleAnnouncementMessages},
 		Action{Name: "Welcome Actions—Msg, Add to Announce., etc", Event: model.WEBSOCKET_EVENT_NEW_USER, Handler: HandleTeamJoins},
 		Action{Name: "Delete Own Message", Event: model.WEBSOCKET_EVENT_REACTION_ADDED, Handler: HandleReactions},
 	}
@@ -128,7 +128,7 @@ func main() {
 
 		// Let's create a bot channel for logging debug messages into
 		CreateBotDebuggingChannelIfNeeded()
-		SendMsgToDebuggingChannel("_"+config.LongName+" has **started** running_", "")
+		SendMsgToChannel(debuggingChannel.Id, "_"+config.LongName+" has **started** running_", "")
 	}
 
 	commands = []Command{
@@ -147,13 +147,13 @@ func main() {
 			},
 		}, */
 
-		//time command
+		// time command
 		Command{
 			Name:        "time",
 			Description: "Displays times mentioned in the message in various relevant time zones.",
 			Handler: func(event *model.WebSocketEvent, post *model.Post) error {
-				//regex to match valid times with time zones (ex. "1 GMT", "2:00 AM EST", "15:00 PT", etc.)
-				re := regexp.MustCompile(`([0-9]{1,2})(:[0-9]{1,2})? *([paPA]\.?[mM]\.?)? +([A-Z][a-zA-Z]+)((\+|\-)([0-9]{1,2})(?:\s|\W|$))?`) // big ol' hairy regex
+				// regex to match valid times with time zones (ex. "1 GMT", "2:00 AM EST", "15:00 PT", etc.)
+				re := regexp.MustCompile(`([0-9]{1,2})(:[0-9]{1,2})? *([paPA]\.?[mM]\.?)? +([A-Za-z][a-zA-Z]+)((\+|\-)([0-9]{1,2})(?:\s|\W|$))?`) // big ol' hairy regex
 				if matches := re.FindAllStringSubmatch(post.Message, -1); matches != nil {
 					for _, m := range matches {
 						layout := "15"
@@ -164,10 +164,8 @@ func main() {
 						}
 						if len(m) > 3 && m[3] != "" {
 							layout += "PM"
-							input += m[3]
-							if len(m[3]) == 1 {
-								input += "M"
-							}
+							input += strings.ToUpper(string(m[3][0]))
+							input += "M"
 						}
 
 						// determine location from input
@@ -255,7 +253,7 @@ func main() {
 |   %s    |   %s   |   %s   |   %s   |   %s   |   %s   |   %s   |`, m[0], pt, mt, ct, et, gmt, cet, ist)
 
 							// make a debugging message with extra info about the above processes
-							debuggingTimeZoneText = fmt.Sprintf("➚ *Debugging Info:*\n(%v)\nTime zone I heard (m[4]) was: %v\nLocation (l): %v", t, m[4], l)
+							debuggingTimeZoneText = fmt.Sprintf("➚ **Debugging Info:**\n(%v)\nTime zone I heard (m[4]) was: %v\nLocation (l): %v", t, m[4], l)
 						}
 						SendMsgToChannel(event.Broadcast.ChannelId, timeZoneText, post.Id)
 						// send debugging message if debugging is turned on
@@ -376,7 +374,9 @@ func CreateBotDebuggingChannelIfNeeded() {
 }
 
 func SendMsgToDebuggingChannel(msg string, replyToId string) {
-	SendMsgToChannel(debuggingChannel.Id, msg, replyToId)
+	if config.Debugging {
+		SendMsgToChannel(debuggingChannel.Id, msg, replyToId)
+	}
 }
 
 func SendMsgToChannel(channel string, msg string, replyToId string) {
@@ -393,19 +393,22 @@ func SendMsgToChannel(channel string, msg string, replyToId string) {
 }
 
 func SendDirectMessage(id string, msg string) {
-	result, err := client.CreateDirectChannel(id, botUser.Id)
-	if result == nil {
-		fmt.Printf("ERROR:  %v\n", err)
-		return
-	}
-	fmt.Printf("result is : %v\n", result)
-
-	post := &model.Post{}
-	post.Message = msg
-	post.ChannelId = result.Id
-	if _, resp := client.CreatePost(post); resp.Error != nil {
-		println("We failed to send a message to the direct channel")
-		PrintError(resp.Error)
+	if id != botUser.Id {
+		result, err := client.CreateDirectChannel(id, botUser.Id)
+		if result == nil {
+			fmt.Printf("ERROR:  %v\n", err)
+			return
+		}
+		fmt.Printf("result is : %v\n", result)
+		post := &model.Post{}
+		post.Message = msg
+		post.ChannelId = result.Id
+		if _, resp := client.CreatePost(post); resp.Error != nil {
+			println("We failed to send a message to the direct channel")
+			PrintError(resp.Error)
+		}
+	} else if id == botUser.Id {
+		SendMsgToDebuggingChannel(fmt.Sprintf("**Prevented holobot from DMing itself this message:**\n\n```\n\n%v\n\n```", msg), "")
 	}
 }
 
@@ -426,28 +429,40 @@ func HandleWebSocketResponse(event *model.WebSocketEvent) {
 //  Handlers ----------------------------------------------
 
 func HandleAnnouncementMessages(event *model.WebSocketEvent) (err error) {
-	// don't do anything if the channel that was joined was not Announcements
+	// don't do anything if the channel that was joined was not Announcements. NOTE: the announcements Channel is only the announcements channel on the public team which is what we (I?) want here.
 	if event.Broadcast.ChannelId != announcementsChannel.Id {
 		return
 	}
-	// if debugging is on, print some messages
-	if config.Debugging {
-		fmt.Println("Looks like someone just joined announcements: %v", event.Data)
-		SendMsgToDebuggingChannel("Hey! Someone just joined `announcements`!", "")
-	}
-	// do the actual deleting
 	post := model.PostFromJson(strings.NewReader(event.Data["post"].(string)))
 	sender := event.Data["sender_name"].(string)
-	if config.Debugging {
-		SendMsgToDebuggingChannel(fmt.Sprintf("Attempting to delete this post: %v\nSender: %v\nconfig.UserName: %v", post.Message, sender, config.UserName), "")
-	}
-	//if the newest message is a join message, and leave message, or an added message, delete it.
-	if matched, _ := regexp.MatchString(`(?:^|\W)((`+sender+` has (joined|left) the channel\.)|(.+ (added to|removed from) the channel by `+config.UserName+`))(?:$)`, post.Message); matched {
-		// if (sender + " has joined the channel." == post.Message) || (sender + " has left the channel." == post.Message) {
-		client.DeletePost(post.Id)
-		if config.Debugging {
-			SendMsgToDebuggingChannel(fmt.Sprintf("Deleted this post: %v", post.Message), "")
+	SendMsgToDebuggingChannel(fmt.Sprintf("**Checking to see if this post is an announcement:** %v\nSender: %v", post.Message, sender), "")
+	matched, _ := regexp.MatchString(`@channel|@all|@here|#announcement`, post.Message)
+	if !matched {
+		// delete the message (as long as it's not holobot's message HAHA >:D)
+		if sender != "holobot" {
+			client.DeletePost(post.Id)
+			SendMsgToDebuggingChannel(fmt.Sprintf("**It's not! Deleted:** %v", post.Message), "")
+			//unless the message was a join/leave message
+			matched, _ = regexp.MatchString(`(?:^|\W)((`+sender+` has (joined|left) the channel\.)|(.+ (added to|removed from) the channel( by `+config.UserName+`)?)|)(?:$)`, post.Message) //FIXME check this regex
+			if !matched {
+				// send DM to sender explaining the sitch, and with the text of their message
+				SendDirectMessage(post.UserId,
+					"Hi there!"+"\n"+"\n"+
+						"**I see you've posted a message in the ~announcements channel that's not an announcement.** I'm letting you know that I deleted it. In order to keep that channel low-volume, **only announcements are allowed there.** We encourage conversations to happen in all other channels."+"\n"+"\n"+
+						"What to do next:"+"\n"+
+						"* **If your post was a reply to an announcement:** use the [the \"How to reply\" guide](https://docs.google.com/document/d/1lAFI9wDK1SHwiNseM9kTmZ1vybSdBZlxxBmZZOv5Nb8) to post your reply in a different channel."+"\n"+
+						"* **If your post was a question or discussion that didn't belong in the announcements channel:** Post it in a relevant channel."+"\n"+
+						"* **If your post was an announcement:** Post it in ~announcements again following [the \"How to announce\" guide](https://docs.google.com/document/d/1owG83jZSD3gJcwP0aRYJTdbEV0HiPHeE7ydmWi10zTw)."+"\n"+"\n"+
+						"Here's the text of your message:"+"\n"+"\n"+
+						"```"+"\n"+"\n"+
+						post.Message+"\n"+"\n"+
+						"```")
+			} else {
+				SendMsgToDebuggingChannel("**That post was also a join/leave message. No DM sent.**", "")
+			}
 		}
+	} else {
+		SendMsgToDebuggingChannel("**It is!!**", "")
 	}
 	return
 }
@@ -542,9 +557,7 @@ func HandleReactions(event *model.WebSocketEvent) (err error) {
 
 	// Check if the post was made by holobot
 	if post.UserId == botUser.Id {
-		if config.Debugging {
-			SendMsgToDebuggingChannel("Reaction to holobot detected!!", "")
-		}
+		SendMsgToDebuggingChannel("**Reaction to holobot detected!!**", "")
 		// If it was, check if the reaction was :x:
 		if reaction.EmojiName == "x" {
 			// If it was, delete the post
@@ -565,7 +578,7 @@ func HandleShowAllChannelEvents(event *model.WebSocketEvent) (err error) {
 		fmt.Printf("I just got this event: \"%v\" with data: \"%v\"\n\n\n", event.Event, event.Data)
 		return
 	}
-	SendMsgToDebuggingChannel(fmt.Sprintf("I just got this event: \"%v\" with data: \"%v\"", event.Event, event.Data), "")
+	SendMsgToDebuggingChannel(fmt.Sprintf("**I just got this event:** \"%v\" **with data:** \"%v\"", event.Event, event.Data), "")
 	return
 }
 
@@ -664,9 +677,7 @@ func SetupGracefulShutdown() {
 			if webSocketClient != nil {
 				webSocketClient.Close()
 			}
-			if config.Debugging {
-				SendMsgToDebuggingChannel("_"+config.LongName+" has **stopped** running_", "")
-			}
+			SendMsgToDebuggingChannel("_"+config.LongName+" has **stopped** running_", "")
 			os.Exit(0)
 		}
 	}()
