@@ -51,11 +51,12 @@ You can verify the Bot is running when
 1 - In the terminal window, press `CTRL+C` to stop the bot. You should see `Mattermost Bot Sample has stopped running` posted in the `Debugging For Sample Bot` channel.
 
 ## Feature Ideas
-* *Italic* means they've beed added
+*Italic* means they've already been added
 
 ### Commands:
 * *time - translate a time to various time zones*
 * move - move a conversation to a different channel
+* source — reply to a comment with @holobot source and holobot will delete your comment and DM you the source of the comment you replied to.
 
 ### Other Features:
 * *Anyone can react with :x: to delete one of holobot's comments*
