@@ -395,19 +395,22 @@ func SendMsgToChannel(channel string, msg string, replyToId string) {
 }
 
 func SendDirectMessage(id string, msg string) {
-	result, err := client.CreateDirectChannel(id, botUser.Id)
-	if result == nil {
-		fmt.Printf("ERROR:  %v\n", err)
-		return
-	}
-	fmt.Printf("result is : %v\n", result)
-
-	post := &model.Post{}
-	post.Message = msg
-	post.ChannelId = result.Id
-	if _, resp := client.CreatePost(post); resp.Error != nil {
-		println("We failed to send a message to the direct channel")
-		PrintError(resp.Error)
+	if id != botUser.Id {
+		result, err := client.CreateDirectChannel(id, botUser.Id)
+		if result == nil {
+			fmt.Printf("ERROR:  %v\n", err)
+			return
+		}
+		fmt.Printf("result is : %v\n", result)
+		post := &model.Post{}
+		post.Message = msg
+		post.ChannelId = result.Id
+		if _, resp := client.CreatePost(post); resp.Error != nil {
+			println("We failed to send a message to the direct channel")
+			PrintError(resp.Error)
+		}
+	} else if id == botUser.Id {
+		SendMsgToDebuggingChannel(fmt.Sprintf("**Prevented holobot from DMing itself this message:**\n\n```\n\n%v\n\n```", msg), "")
 	}
 }
 
