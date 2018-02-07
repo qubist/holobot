@@ -164,10 +164,8 @@ func main() {
 						}
 						if len(m) > 3 && m[3] != "" {
 							layout += "PM"
-							input += m[3]
-							if len(m[3]) == 1 {
-								input += "M"
-							}
+							input += strings.ToUpper(string(m[3][0]))
+							input += "M"
 						}
 
 						// determine location from input
