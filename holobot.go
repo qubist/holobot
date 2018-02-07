@@ -543,7 +543,7 @@ func HandleReactions(event *model.WebSocketEvent) (err error) {
 
 	// Check if the post was made by holobot
 	if post.UserId == botUser.Id {
-		SendMsgToDebuggingChannel("Reaction to holobot detected!!", "")
+		SendMsgToDebuggingChannel("**Reaction to holobot detected!!**", "")
 		// If it was, check if the reaction was :x:
 		if reaction.EmojiName == "x" {
 			// If it was, delete the post
@@ -564,7 +564,7 @@ func HandleShowAllChannelEvents(event *model.WebSocketEvent) (err error) {
 		fmt.Printf("I just got this event: \"%v\" with data: \"%v\"\n\n\n", event.Event, event.Data)
 		return
 	}
-	SendMsgToDebuggingChannel(fmt.Sprintf("I just got this event: \"%v\" with data: \"%v\"", event.Event, event.Data), "")
+	SendMsgToDebuggingChannel(fmt.Sprintf("**I just got this event:** \"%v\" **with data:** \"%v\"", event.Event, event.Data), "")
 	return
 }
 
