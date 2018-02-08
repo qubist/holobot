@@ -84,8 +84,8 @@ func main() {
 
 	SetupGracefulShutdown()
 
-	// client = model.NewAPIv4Client("http://" + config.Domain) //FOR TESTING
-	client = model.NewAPIv4Client("https://" + config.Domain)
+	client = model.NewAPIv4Client("http://" + config.Domain) //FOR TESTING
+	// client = model.NewAPIv4Client("https://" + config.Domain)
 
 	// Let's test to see if the mattermost server is up and running
 	MakeSureServerIsRunning()
@@ -269,8 +269,8 @@ func main() {
 		},
 	}
 	// Let's start listening to some channels via the websocket!
-	// webSocketClient, apperr := model.NewWebSocketClient4("ws://"+config.Domain, client.AuthToken) //FOR TESTING
-	webSocketClient, apperr := model.NewWebSocketClient4("wss://"+config.Domain, client.AuthToken)
+	webSocketClient, apperr := model.NewWebSocketClient4("ws://"+config.Domain, client.AuthToken) //FOR TESTING
+	// webSocketClient, apperr := model.NewWebSocketClient4("wss://"+config.Domain, client.AuthToken)
 	if err != nil {
 		println("We failed to connect to the web socket")
 		PrintError(apperr)
@@ -435,34 +435,46 @@ func HandleAnnouncementMessages(event *model.WebSocketEvent) (err error) {
 	}
 	post := model.PostFromJson(strings.NewReader(event.Data["post"].(string)))
 	sender := event.Data["sender_name"].(string)
-	SendMsgToDebuggingChannel(fmt.Sprintf("**Checking to see if this post is an announcement:** %v\nSender: %v", post.Message, sender), "")
+	SendMsgToDebuggingChannel(fmt.Sprintf("**Running tests on a new post in 'Announcements.**\n**Post:** %v\n**Sender:** %v", post.Message, sender), "")
 	matched, _ := regexp.MatchString(`@channel|@all|@here|#announcement`, post.Message)
+	// if the message is not an announcement...
 	if !matched {
-		// delete the message (as long as it's not holobot's message HAHA >:D)
+		// and if the sender wasn't holobot...
 		if sender != "holobot" {
+			// delete the post.
 			client.DeletePost(post.Id)
-			SendMsgToDebuggingChannel(fmt.Sprintf("**It's not! Deleted:** %v", post.Message), "")
-			//unless the message was a join/leave message
-			matched, _ = regexp.MatchString(`(?:^|\W)((`+sender+` has (joined|left) the channel\.)|(.+ (added to|removed from) the channel( by `+config.UserName+`)?)|)(?:$)`, post.Message) //FIXME check this regex
-			if !matched {
-				// send DM to sender explaining the sitch, and with the text of their message
-				SendDirectMessage(post.UserId,
-					"Hi there!"+"\n"+"\n"+
-						"**I see you've posted a message in the ~announcements channel that's not an announcement.** I'm letting you know that I deleted it. In order to keep that channel low-volume, **only announcements are allowed there.** We encourage conversations to happen in all other channels."+"\n"+"\n"+
-						"What to do next:"+"\n"+
-						"* **If your post was a reply to an announcement:** use the [the \"How to reply\" guide](https://docs.google.com/document/d/1lAFI9wDK1SHwiNseM9kTmZ1vybSdBZlxxBmZZOv5Nb8) to post your reply in a different channel."+"\n"+
-						"* **If your post was a question or discussion that didn't belong in the announcements channel:** Post it in a relevant channel."+"\n"+
-						"* **If your post was an announcement:** Post it in ~announcements again following [the \"How to announce\" guide](https://docs.google.com/document/d/1owG83jZSD3gJcwP0aRYJTdbEV0HiPHeE7ydmWi10zTw)."+"\n"+"\n"+
-						"Here's the text of your message:"+"\n"+"\n"+
-						"```"+"\n"+"\n"+
-						post.Message+"\n"+"\n"+
-						"```")
+			SendMsgToDebuggingChannel("* **It's not an announcement! Deleted!**", "")
+		} else {
+			matched, _ = regexp.MatchString(`(?:^)((`+sender+` has (joined|left) the channel\.)|(.+ (added to|removed from) the (channel|team)( by `+config.UserName+`)?(\.)?)|)(?:$)`, post.Message)
+			// if the sender *was* holobt, and the post was a join/leave message...
+			if matched {
+				// delete the post.
+				client.DeletePost(post.Id)
+				SendMsgToDebuggingChannel("* **Deleted join/leave message even though holobot sent it!**", "")
 			} else {
-				SendMsgToDebuggingChannel("**That post was also a join/leave message. No DM sent.**", "")
+				SendMsgToDebuggingChannel("* **It's a message from holobot! I stopped caring if it's an announcement!**", "")
 			}
 		}
+		matched, _ = regexp.MatchString(`(?:^)((`+sender+` has (joined|left) the channel\.)|(.+ (added to|removed from) the (channel|team)( by `+config.UserName+`)?(\.)?)|)(?:$)`, post.Message)
+		// then, if the message was not a join/leave message...
+		if !matched {
+			// send explanitory DM, and with the text of their message. (This fails due to a check inside SendDirectMessage if the recipient is holobot.)
+			SendDirectMessage(post.UserId,
+				"Hi there!"+"\n"+"\n"+
+					"**I see you've posted a message in the ~announcements channel that's not an announcement.** I'm letting you know that I deleted it. In order to keep that channel low-volume, **only announcements are allowed there.** We encourage conversations to happen in all other channels."+"\n"+"\n"+
+					"What to do next:"+"\n"+
+					"* **If your post was a reply to an announcement:** use the [the \"How to reply\" guide](https://docs.google.com/document/d/1lAFI9wDK1SHwiNseM9kTmZ1vybSdBZlxxBmZZOv5Nb8) to post your reply in a different channel."+"\n"+
+					"* **If your post was a question or discussion that didn't belong in the announcements channel:** Post it in a relevant channel."+"\n"+
+					"* **If your post was an announcement:** Post it in ~announcements again following [the \"How to announce\" guide](https://docs.google.com/document/d/1owG83jZSD3gJcwP0aRYJTdbEV0HiPHeE7ydmWi10zTw)."+"\n"+"\n"+
+					"Here's the text of your message:"+"\n"+"\n"+
+					"```"+"\n"+"\n"+
+					post.Message+"\n"+"\n"+
+					"```")
+		} else {
+			SendMsgToDebuggingChannel("* **That post was also a join/leave message. No DM sent!**", "")
+		}
 	} else {
-		SendMsgToDebuggingChannel("**It is!!**", "")
+		SendMsgToDebuggingChannel("* **It's an announcement!!**", "")
 	}
 	return
 }
