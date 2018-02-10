@@ -56,10 +56,10 @@ You can verify the Bot is running when
 ### Commands:
 * *time - translate a time to various time zones*
 * move - move a conversation to a different channel
-* source - reply to a comment with @holobot source and holobot will delete your comment and DM you the source of the comment you replied to.
 
 ### Other Features:
 * *Anyone can react with :x: to delete one of holobot's comments*
+* *Anyone can react with :u55b6: to get a message of the post's plaintext*
 
 ### Ideas:
 * React with police car to any message to alert steward
