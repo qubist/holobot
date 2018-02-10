@@ -503,7 +503,7 @@ func HandleDMs(event *model.WebSocketEvent) (err error) {
 			SendDirectMessage(post.UserId, HelpMessage)
 		}
 		// if the message contains the string "mattermost tips"
-		if matched, _ := regexp.MatchString(`(?i)(?:^|\W)mattermost tips(?:$|\W)`, post.Message); matched {
+		if matched, _ := regexp.MatchString(`(?i)(?:^|\W)(mattermost\s+)?tips(?:$|\W)`, post.Message); matched {
 			SendDirectMessage(post.UserId, MattermostTipsMessage) // send tips
 		}
 	}
