@@ -550,11 +550,9 @@ func HandleDMs(event *model.WebSocketEvent) (err error) {
 }
 
 func HandleReactions(event *model.WebSocketEvent) (err error) {
-	//fmt.Printf("Event data: %v\n\n", event.Data)
+	// fmt.Printf("Event data: %v\n\n", event.Data)
 	reaction := model.ReactionFromJson(strings.NewReader(event.Data["reaction"].(string)))
 	post, _ := client.GetPost(reaction.PostId, "")
-	// Debugging I was doing to find out what information I needed and how to get it:
-	// SendMsgToDebuggingChannel(fmt.Sprintf("Emoji name: %v\nPost Id: %v\nPost: %v", reaction.EmojiName, reaction.PostId, post), "")
 
 	// Check if the post was made by holobot
 	if post.UserId == botUser.Id {
