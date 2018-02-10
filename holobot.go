@@ -533,11 +533,12 @@ func HandleReactions(event *model.WebSocketEvent) (err error) {
 func HandleSourceRequests(event *model.WebSocketEvent) (err error) {
 	reaction := model.ReactionFromJson(strings.NewReader(event.Data["reaction"].(string)))
 	post, _ := client.GetPost(reaction.PostId, "")
+	postuser, _ := client.GetUser(post.UserId, "")
 	reactuser, _ := client.GetUser(reaction.UserId, "")
 	// if you react with :u55b6:
 	if reaction.EmojiName == "u55b6" {
 		SendMsgToDebuggingChannel(fmt.Sprintf("**Source request reaction detected!!**\n**Event data:**%v", event.Data), "")
-		SendDirectMessage(reactuser.Id, "Here's plaintext of "+reactuser.Username+"'s message:\n```\n"+post.Message+"\n```")
+		SendDirectMessage(reactuser.Id, "Here's plaintext of @"+postuser.Username+"'s message:\n```\n"+post.Message+"\n```")
 		client.DeleteReaction(reaction)
 	}
 	return
