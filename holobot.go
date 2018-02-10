@@ -481,25 +481,7 @@ func HandleTeamJoins(event *model.WebSocketEvent) (err error) {
 			if teams[0].Id == publicTeam.Id { // if the user is brand new user, and only on the public team...
 				fmt.Printf("USER's ONE TEAM IS: %v\n", publicTeam)
 				// send them the welcome text as a direct message:
-				SendDirectMessage(user,
-					"# Welcome! "+"\n"+
-						"I'm **holobot**! I'll help you get started around here. Here's some useful info:"+"\n"+
-						"##### Channels and Stewards"+"\n"+
-						"See those **Public Channels** in the menu on the left? That's where most everything happens around here. Once you're in a channel you can click on the header to see information about the channel's purpose, and how it operates. The users after the `?:` in the channel header are the the **Stewards** for that channel. Let the Steward know if you have any questions, or need direction."+"\n"+
-						"##### The Announcements Channel"+"\n"+
-						"I've automatically added you to the **~announcements** channel! This is a low-volume channel for brief, relevant announcements. Posts that aren't announcements in that channel get deleted, so watch out for that. (If you need to respond to an announcement, post in **~town-square** and either link back to the announcement, or quote it by prepending it with `> `.)"+"\n"+
-						"##### Q&A Channels"+"\n"+
-						"Channels beginning with `❓`—like ~holo-currency-qa, ~holochain-tech-qa, and ~holoport-host-qa—are specially designated Q&A channels. If you've got a question, check to see if the relevant Q&A channel answers it, and then go ahead and post there."+"\n"+
-						"##### Other Channels"+"\n"+
-						"The ~app-ideas channel is a great place to post possible applications of the Holochain technology and brainstorm how potential apps would look, work, and feel. The ~app-dev channel is good for discussing Holochain applications in active states of development."+"\n"+
-						"##### A Few Mattermost Tips"+"\n"+
-						"* Click the tiny reply arrow icon on a post to **reply** directly to it. This pulls up the thread in the pane on the right. Replies show up in the channel as new posts replying to older posts, with a backlink you can click to pull up the entire thread for easy review."+"\n"+
-						"* Click the star next to a channel's title to **favorite** it. Favorited channels appear at the top of your list."+"\n"+
-						"* Press Ctrl-K/Cmd-K to open a **search box** to type and quickly jump to a channel."+"\n"+
-						"You can direct message me `mattermost tips` to see more."+"\n"+
-						"***"+"\n"+
-						"It's good to have you here! Feel free to introduce yourself to everybody in **~town-square,** and click on `More...` to join all the channels that interest you!"+"\n"+
-						"See you around :)")
+				SendDirectMessage(user, WelcomeMessage)
 				// and add the user to announcements
 				client.AddChannelMember(announcementsChannel.Id, user)
 			}
@@ -516,34 +498,13 @@ func HandleDMs(event *model.WebSocketEvent) (err error) {
 	// if the new post is in a DM channel to the bot
 	if matched, _ := regexp.MatchString(`(^`+botUser.Id+`__)|(__`+botUser.Id+`$)`, name); matched {
 		post := model.PostFromJson(strings.NewReader(event.Data["post"].(string)))
-		// if the message contains the string "help", "halp", or a variotion of "who are you?"
+		// if the message contains the string "help", "halp", or a variation of "who are you?"
 		if matched, _ := regexp.MatchString(`(?i)(?:^|\W)help|halp|who are you(?:$|\W)`, post.Message); matched {
-			SendDirectMessage(post.UserId,
-				"Hi, I'm holobot! I cheerfully and automatically perform various actions to help things run smoother around the team. I can also help you out with commands!"+"\n"+"\n"+
-					"Use a command by typing `@holobot` followed by the command's name. For example, typing `@holobot time` will execute my \"time\" command."+"\n"+"\n"+
-					"Note: I'm only able to execute commands in channels I'm a part of, and in direct messages with me. You can add me to your channel by clicking on the channel header and then on `Add Members`. I cant read your direct messages."+"\n"+"\n"+
-					// I'm using this ridiculous number of non-breaking spaces as a hacky (read: very very hacky) way of making the usage exapmles not wrap at the space inbetween "@holobot" and the command (ex. "time")
-					"| Command | Description |    Usage&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  | Example |"+"\n"+
-					"|---------|-------------|---|---|"+"\n"+
-					"| `time`  | I'll reply with a handy table translating the times you mentioned in your message into various relevant time zones. | `@holobot time` | *Does a meeting at 9 AM EST work for everyone? @holobot time* |"+"\n"+"\n"+
-					"If you have questions, feedback, or suggestions, send @will a direct message. :)")
+			SendDirectMessage(post.UserId, HelpMessage)
 		}
 		// if the message contains the string "mattermost tips"
 		if matched, _ := regexp.MatchString(`(?i)(?:^|\W)mattermost tips(?:$|\W)`, post.Message); matched {
-			SendDirectMessage(post.UserId, //send tips
-				"##### Mattermost Tips"+"\n"+
-					"* Click the tiny reply arrow icon on a post to **reply** directly to it. This pulls up the thread in the pane on the right. Replies show up in the channel as new posts replying to older posts, with a backlink you can click to pull up the entire thread for easy review."+"\n"+
-					"* Click the star next to a channel's title to **favorite** it. Favorited channels show up in a list at the top, so this is the best way to stay plugged-in to the key channels you are involved with. You can favorite both public and private channels as well as private conversations."+"\n"+
-					"* Press Ctrl-K/Cmd-K to open a **search box** to type and quickly jump to a channel."+"\n"+
-					"* Click the flag next to the timestamp on a message to **flag** it. The list of posts you have flagged can be seen by clicking the flag icon in the top right corner of the screen. Use flags to keep track of posts for follow-up, or to save them for later. It's a great replacement for \"Mark as Unread\"!"+"\n"+
-					"* Click the `@` icon next to the flag icon to see a list of **mentions** of you. You can change what will trigger a mention in Account Settings > Notifications."+"\n"+
-					"* Use emojis to **react** to posts without triggering a notification or making people read more text. Reactions are also sometimes used for voting or polling."+"\n"+
-					"* **Channel headers** can list links to core founding documents and key locations for each channel."+"\n"+
-					"* Click a user's **profile picture** to see their info or send them a direct message."+"\n"+
-					"* **Mention** someone with `@username`. `@username` will always trigger a mention for them. Using someone's first name can also trigger a mention, depending on their settings."+"\n"+
-					"* `@channel` and `@all` trigger **channel-wide mentions** that notify everyone in the channel. Use these sparingly and in the most specific relevant channel to avoid triggering mentions for unrelated people."+"\n"+
-					"* You can use specific rules to render messages with special **formatting.** Check [Mattermost's formatting guide](https://docs.mattermost.com/help/messaging/formatting-text.html) for detailed documentation of all these rules."+"\n"+
-					"* **Pin** posts that are announcements or have long-term value for a channel. To pin a post, mouse over the post, then click the tiny `[...]` icon which appears to access the menu, then click `Pin to channel`. To view all the pinned posts in a channel, click the thumbtack icon to the left of the search bar.")
+			SendDirectMessage(post.UserId, MattermostTipsMessage) // send tips
 		}
 	}
 	return
@@ -694,3 +655,53 @@ func SetupGracefulShutdown() {
 		}
 	}()
 }
+
+// Static messages
+
+const (
+	WelcomeMessage = "# Welcome! " + "\n" +
+		"I'm **holobot**! I'll help you get started around here. Here's some useful info:" + "\n" +
+		"##### Channels and Stewards" + "\n" +
+		"See those **Public Channels** in the menu on the left? That's where most everything happens around here. Once you're in a channel you can click on the header to see information about the channel's purpose, and how it operates. The users after the `?:` in the channel header are the the **Stewards** for that channel. Let the Steward know if you have any questions, or need direction." + "\n" +
+		"##### The Announcements Channel" + "\n" +
+		"I've automatically added you to the **~announcements** channel! This is a low-volume channel for brief, relevant announcements. Posts that aren't announcements in that channel get deleted, so watch out for that. (If you need to respond to an announcement, post in **~town-square** and either link back to the announcement, or quote it by prepending it with `> `.)" + "\n" +
+		"##### Q&A Channels" + "\n" +
+		"Channels beginning with `❓`—like ~holo-currency-qa, ~holochain-tech-qa, and ~holoport-host-qa—are specially designated Q&A channels. If you've got a question, check to see if the relevant Q&A channel answers it, and then go ahead and post there." + "\n" +
+		"##### Other Channels" + "\n" +
+		"The ~app-ideas channel is a great place to post possible applications of the Holochain technology and brainstorm how potential apps would look, work, and feel. The ~app-dev channel is good for discussing Holochain applications in active states of development." + "\n" +
+		"##### A Few Mattermost Tips" + "\n" +
+		"* Click the tiny reply arrow icon on a post to **reply** directly to it. This pulls up the thread in the pane on the right. Replies show up in the channel as new posts replying to older posts, with a backlink you can click to pull up the entire thread for easy review." + "\n" +
+		"* Click the star next to a channel's title to **favorite** it. Favorited channels appear at the top of your list." + "\n" +
+		"* Press Ctrl-K/Cmd-K to open a **search box** to type and quickly jump to a channel." + "\n" +
+		"You can direct message me `mattermost tips` to see more." + "\n" +
+		"***" + "\n" +
+		"It's good to have you here! Feel free to introduce yourself to everybody in **~town-square,** and click on `More...` to join all the channels that interest you!" + "\n" +
+		"See you around :)"
+)
+
+const (
+	HelpMessage = "Hi, I'm holobot! I cheerfully and automatically perform various actions to help things run smoother around the team. I can also help you out with commands!" + "\n" + "\n" +
+		"Use a command by typing `@holobot` followed by the command's name. For example, typing `@holobot time` will execute my \"time\" command." + "\n" + "\n" +
+		"Note: I'm only able to execute commands in channels I'm a part of, and in direct messages with me. You can add me to your channel by clicking on the channel header and then on `Add Members`. I cant read your direct messages." + "\n" + "\n" +
+		// I'm using this ridiculous number of non-breaking spaces as a hacky (read: very very hacky) way of making the usage exapmles not wrap at the space inbetween "@holobot" and the command (ex. "time")
+		"| Command | Description |    Usage&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  | Example |" + "\n" +
+		"|---------|-------------|---|---|" + "\n" +
+		"| `time`  | I'll reply with a handy table translating the times you mentioned in your message into various relevant time zones. | `@holobot time` | *Does a meeting at 9 AM EST work for everyone? @holobot time* |" + "\n" + "\n" +
+		"If you have questions, feedback, or suggestions, send @will a direct message. :)"
+)
+
+const (
+	MattermostTipsMessage = "##### Mattermost Tips" + "\n" +
+		"* Click the tiny reply arrow icon on a post to **reply** directly to it. This pulls up the thread in the pane on the right. Replies show up in the channel as new posts replying to older posts, with a backlink you can click to pull up the entire thread for easy review." + "\n" +
+		"* Click the star next to a channel's title to **favorite** it. Favorited channels show up in a list at the top, so this is the best way to stay plugged-in to the key channels you are involved with. You can favorite both public and private channels as well as private conversations." + "\n" +
+		"* Press Ctrl-K/Cmd-K to open a **search box** to type and quickly jump to a channel." + "\n" +
+		"* Click the flag next to the timestamp on a message to **flag** it. The list of posts you have flagged can be seen by clicking the flag icon in the top right corner of the screen. Use flags to keep track of posts for follow-up, or to save them for later. It's a great replacement for \"Mark as Unread\"!" + "\n" +
+		"* Click the `@` icon next to the flag icon to see a list of **mentions** of you. You can change what will trigger a mention in Account Settings > Notifications." + "\n" +
+		"* Use emojis to **react** to posts without triggering a notification or making people read more text. Reactions are also sometimes used for voting or polling." + "\n" +
+		"* **Channel headers** can list links to core founding documents and key locations for each channel." + "\n" +
+		"* Click a user's **profile picture** to see their info or send them a direct message." + "\n" +
+		"* **Mention** someone with `@username`. `@username` will always trigger a mention for them. Using someone's first name can also trigger a mention, depending on their settings." + "\n" +
+		"* `@channel` and `@all` trigger **channel-wide mentions** that notify everyone in the channel. Use these sparingly and in the most specific relevant channel to avoid triggering mentions for unrelated people." + "\n" +
+		"* You can use specific rules to render messages with special **formatting.** Check [Mattermost's formatting guide](https://docs.mattermost.com/help/messaging/formatting-text.html) for detailed documentation of all these rules." + "\n" +
+		"* **Pin** posts that are announcements or have long-term value for a channel. To pin a post, mouse over the post, then click the tiny `[...]` icon which appears to access the menu, then click `Pin to channel`. To view all the pinned posts in a channel, click the thumbtack icon to the left of the search bar."
+)
