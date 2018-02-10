@@ -115,6 +115,7 @@ func main() {
 		Action{Name: "Delete Non-announcement", Event: model.WEBSOCKET_EVENT_POSTED, Handler: HandleAnnouncementMessages},
 		Action{Name: "Welcome Actions—Msg, Add to Announce., etc", Event: model.WEBSOCKET_EVENT_NEW_USER, Handler: HandleTeamJoins},
 		Action{Name: "Delete Own Message", Event: model.WEBSOCKET_EVENT_REACTION_ADDED, Handler: HandleReactions},
+		Action{Name: "Source Requests", Event: model.WEBSOCKET_EVENT_REACTION_ADDED, Handler: HandleSourceRequests},
 	}
 	// if debug mode is on, activate the Debug Log Channel Handler, and do some other things
 	//fmt.Printf("imported config.yaml data:\n%v\n", config)
@@ -566,6 +567,19 @@ func HandleReactions(event *model.WebSocketEvent) (err error) {
 				fmt.Printf("Deleted this post due to \"x\" reaction: %v\n", post)
 			}
 		}
+	}
+	return
+}
+
+func HandleSourceRequests(event *model.WebSocketEvent) (err error) {
+	reaction := model.ReactionFromJson(strings.NewReader(event.Data["reaction"].(string)))
+	post, _ := client.GetPost(reaction.PostId, "")
+	reactuser, _ := client.GetUser(reaction.UserId, "")
+	// if you react with :u55b6:
+	if reaction.EmojiName == "u55b6" {
+		SendMsgToDebuggingChannel(fmt.Sprintf("**Source request reaction detected!!**\n**Event data:**%v", event.Data), "")
+		SendDirectMessage(reactuser.Id, "Here's plaintext of "+reactuser.Username+"'s message:\n```\n"+post.Message+"\n```")
+		client.DeleteReaction(reaction)
 	}
 	return
 }
