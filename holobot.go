@@ -507,7 +507,7 @@ func HandleDMs(event *model.WebSocketEvent) (err error) {
 	if matched, _ := regexp.MatchString(`(^`+botUser.Id+`__)|(__`+botUser.Id+`$)`, name); matched {
 		post := model.PostFromJson(strings.NewReader(event.Data["post"].(string)))
 		// if the message contains the string "help", "halp", or a variation of "who are you?"
-		if matched, _ := regexp.MatchString(`(?i)(?:^|\W)help|halp|who are you(?:$|\W)`, post.Message); matched {
+		if matched, _ := regexp.MatchString(`(?i)(?:^|\W)help|halp|who are you|commands(?:$|\W)`, post.Message); matched {
 			SendDirectMessage(post.UserId, HelpMessage)
 		}
 		// if the message contains the string "mattermost tips"
