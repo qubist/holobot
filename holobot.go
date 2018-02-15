@@ -190,6 +190,8 @@ func main() {
 							loc = "America/Guayaquil"
 						case "IST", "INDIAN", "INDIA":
 							loc = "Asia/Kolkata"
+						case "ADT", "AEDT", "ASDT", "AUSTRALIA", "MELBOURNE":
+							loc = "Australia/Melbourne"
 						default:
 							loc = m[4] //default
 						}
@@ -246,12 +248,14 @@ func main() {
 							cet := t.In(cetl).Format("15:04")
 							istl, _ := time.LoadLocation("Asia/Kolkata")
 							ist := t.In(istl).Format("3:04 PM")
+							adtl, _ := time.LoadLocation("Australia/Melbourne")
+							adt := t.In(adtl).Format("3:04 PM")
 							// and prints them in a table
 							timeZoneText = fmt.Sprintf(`"%s" is:
 
-|   PT    |   MT   |   CT   |   ET   |  GMT   |  CET   |  IST   |
-|:-------:|:------:|:------:|:------:|:------:|:------:|:------:|
-|   %s    |   %s   |   %s   |   %s   |   %s   |   %s   |   %s   |`, m[0], pt, mt, ct, et, gmt, cet, ist)
+|   PT    |   MT   |   CT   |   ET   |  GMT   |  CET   |  IST   |  ADT   |
+|:-------:|:------:|:------:|:------:|:------:|:------:|:------:|:------:|
+|   %s    |   %s   |   %s   |   %s   |   %s   |   %s   |   %s   |   %s   |`, m[0], pt, mt, ct, et, gmt, cet, ist, adt)
 
 							// make a debugging message with extra info about the above processes
 							debuggingTimeZoneText = fmt.Sprintf("➚ **Debugging Info:**\n(%v)\nTime zone I heard (m[4]) was: %v\nLocation (l): %v\nPost.Id: %v\npost.RootId: %v", t, m[4], l, post.Id, post.RootId)
