@@ -56,6 +56,8 @@ You can verify the Bot is running when
 ### Commands:
 * *time - translate a time to various time zones*
 * move - move a conversation to a different channel
+* meetings: request information about upcoming meetings. Parameters: today / tomorrow / this week / next week / 10 days / 30 days; if you can give meeting a "holobot unique id" - ask to be reminded - eg 24 hours in advance: holobot remind <meetingid> 24 hours
+
 
 ### Other Features:
 * *Anyone can react with :x: to delete one of holobot's comments*
