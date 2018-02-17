@@ -58,7 +58,7 @@ $ go get github.com/mattermost/mattermost-server/model
 
 ## Usage
 
-### Starting the Bot.
+### Starting the Bot
 ```
 $ make run
 ```
