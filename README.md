@@ -52,7 +52,7 @@ Debugging: false
 $ go get github.com/mattermost/mattermost-server/model
 ```
 
-### Dependencies:
+### Dependencies
 * [golang](https://golang.org/)
 
 ## Usage
