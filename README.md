@@ -8,17 +8,16 @@
 
 ## Table of Contents
 
-<!-- TOC depthFrom:2 depthTo:6 withLinks:1 updateOnSave:0 orderedList:0 -->
-
 - [Background](#background)
 - [Install](#install)
 	- [Dependencies:](#dependencies)
 - [Usage](#usage)
-	- [Starting the Bot.](#starting-the-bot)
+	- [Starting the Bot](#starting-the-bot)
 	- [Testing the Bot](#testing-the-bot)
 	- [Stopping the Bot](#stopping-the-bot)
-
-<!-- /TOC -->
+- [Maintainer](#maintainer)
+- [Contribute](#contribute)
+- [License](#license)
 
 ## Background
 
