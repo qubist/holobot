@@ -10,7 +10,7 @@
 
 - [Background](#background)
 - [Install](#install)
-	- [Dependencies:](#dependencies)
+	- [Dependencies](#dependencies)
 - [Usage](#usage)
 	- [Starting the Bot](#starting-the-bot)
 	- [Testing the Bot](#testing-the-bot)
