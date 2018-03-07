@@ -253,9 +253,9 @@ func main() {
 							// and prints them in a table
 							timeZoneText = fmt.Sprintf(`"%s" is:
 
-|   PT    |   MT   |   CT   |   ET   |  GMT   |  CET   |  IST   |  ADT   |
-|:-------:|:------:|:------:|:------:|:------:|:------:|:------:|:------:|
-|   %s    |   %s   |   %s   |   %s   |   %s   |   %s   |   %s   |   %s   |`, m[0], pt, mt, ct, et, gmt, cet, ist, adt)
+|     PT      |      MT      |      CT     |      ET     |   GMT   |   CET   |    IST     |    ADT     |
+|:--------:|:---------:|:--------:|:--------:|:-------:|:------:|:--------:|:--------:|
+| %s | %s | %s | %s | %s | %s | %s | %s |`, m[0], pt, mt, ct, et, gmt, cet, ist, adt)
 
 							// make a debugging message with extra info about the above processes
 							debuggingTimeZoneText = fmt.Sprintf("➚ **Debugging Info:**\n(%v)\nTime zone I heard (m[4]) was: %v\nLocation (l): %v\nPost.Id: %v\npost.RootId: %v", t, m[4], l, post.Id, post.RootId)
