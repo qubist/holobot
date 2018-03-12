@@ -180,9 +180,9 @@ func main() {
 							loc = "America/Denver"
 						case "CST", "CT", "CENTRAL":
 							loc = "America/Chicago"
-						case "EST", "ET", "EASTERN", "EAST":
+						case "EST", "EDT", "ET", "EASTERN", "EAST":
 							loc = "America/New_York"
-						case "GMT", "UTC", "GREENWICH":
+						case "GMT", "UTC", "GREENWICH", "WET":
 							loc = "Etc/UTC"
 						case "CHINA", "CHINESE", "SHANGHAI", "BEIJING":
 							loc = "Asia/Shanghai"
@@ -236,15 +236,15 @@ func main() {
 						} else {
 							ptl, _ := time.LoadLocation("America/Los_Angeles")
 							pt := t.In(ptl).Format("3:04 PM")
-							mtl, _ := time.LoadLocation("MST")
+							mtl, _ := time.LoadLocation("America/Denver")
 							mt := t.In(mtl).Format("3:04 PM")
 							ctl, _ := time.LoadLocation("America/Chicago")
 							ct := t.In(ctl).Format("3:04 PM")
-							etl, _ := time.LoadLocation("EST")
+							etl, _ := time.LoadLocation("America/New_York")
 							et := t.In(etl).Format("3:04 PM")
 							gmtl, _ := time.LoadLocation("GMT")
 							gmt := t.In(gmtl).Format("15:04")
-							cetl, _ := time.LoadLocation("CET")
+							cetl, _ := time.LoadLocation("Europe/Paris")
 							cet := t.In(cetl).Format("15:04")
 							istl, _ := time.LoadLocation("Asia/Kolkata")
 							ist := t.In(istl).Format("3:04 PM")
