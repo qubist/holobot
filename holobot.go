@@ -180,9 +180,9 @@ func main() {
 							loc = "America/Denver"
 						case "CST", "CT", "CENTRAL":
 							loc = "America/Chicago"
-						case "EST", "ET", "EASTERN", "EAST":
+						case "EST", "EDT", "ET", "EASTERN", "EAST":
 							loc = "America/New_York"
-						case "GMT", "UTC", "GREENWICH":
+						case "GMT", "UTC", "GREENWICH", "WET":
 							loc = "Etc/UTC"
 						case "CHINA", "CHINESE", "SHANGHAI", "BEIJING":
 							loc = "Asia/Shanghai"
@@ -236,15 +236,15 @@ func main() {
 						} else {
 							ptl, _ := time.LoadLocation("America/Los_Angeles")
 							pt := t.In(ptl).Format("3:04 PM")
-							mtl, _ := time.LoadLocation("MST")
+							mtl, _ := time.LoadLocation("America/Denver")
 							mt := t.In(mtl).Format("3:04 PM")
 							ctl, _ := time.LoadLocation("America/Chicago")
 							ct := t.In(ctl).Format("3:04 PM")
-							etl, _ := time.LoadLocation("EST")
+							etl, _ := time.LoadLocation("America/New_York")
 							et := t.In(etl).Format("3:04 PM")
 							gmtl, _ := time.LoadLocation("GMT")
 							gmt := t.In(gmtl).Format("15:04")
-							cetl, _ := time.LoadLocation("CET")
+							cetl, _ := time.LoadLocation("Europe/Paris")
 							cet := t.In(cetl).Format("15:04")
 							istl, _ := time.LoadLocation("Asia/Kolkata")
 							ist := t.In(istl).Format("3:04 PM")
@@ -253,9 +253,9 @@ func main() {
 							// and prints them in a table
 							timeZoneText = fmt.Sprintf(`"%s" is:
 
-|   PT    |   MT   |   CT   |   ET   |  GMT   |  CET   |  IST   |  ADT   |
-|:-------:|:------:|:------:|:------:|:------:|:------:|:------:|:------:|
-|   %s    |   %s   |   %s   |   %s   |   %s   |   %s   |   %s   |   %s   |`, m[0], pt, mt, ct, et, gmt, cet, ist, adt)
+|     PT      |      MT      |      CT     |      ET     |   GMT   |   CET   |    IST     |    ADT     |
+|:--------:|:---------:|:--------:|:--------:|:-------:|:------:|:--------:|:--------:|
+| %s | %s | %s | %s | %s | %s | %s | %s |`, m[0], pt, mt, ct, et, gmt, cet, ist, adt)
 
 							// make a debugging message with extra info about the above processes
 							debuggingTimeZoneText = fmt.Sprintf("➚ **Debugging Info:**\n(%v)\nTime zone I heard (m[4]) was: %v\nLocation (l): %v\nPost.Id: %v\npost.RootId: %v", t, m[4], l, post.Id, post.RootId)
@@ -441,77 +441,86 @@ func HandleWebSocketResponse(event *model.WebSocketEvent) {
 
 //  Handlers ----------------------------------------------
 
+func IsJoinLeave(sender string, post *model.Post) bool {
+	matched, _ := regexp.MatchString(`(?:^|\W)((`+sender+` has (joined|left) the channel\.)|(.+ (added to|removed from) the channel( by (`+config.UserName+`|`+sender+`))?(\.)?))(?:$)`, post.Message)
+	return matched
+}
+
+func IsAnnouncement(post *model.Post) bool {
+	matched, _ := regexp.MatchString(`@channel|@all|@here|#announcement`, post.Message)
+	return matched
+}
+
 func HandleAnnouncementMessages(event *model.WebSocketEvent) (err error) {
-	// don't do anything if the channel that was joined was not Announcements. NOTE: the announcements Channel is only the announcements channel on the public team which is what we (I?) want here.
+	// don't do anything if the channel that was joined was not Announcements. NOTE: the announcements Channel is only the announcements channel on the public team which is what we want here.
 	if event.Broadcast.ChannelId != announcementsChannel.Id {
 		return
 	}
 	post := model.PostFromJson(strings.NewReader(event.Data["post"].(string)))
 	sender := event.Data["sender_name"].(string)
+	isJoinLeave := IsJoinLeave(sender, post)
+	isAnnouncement := IsAnnouncement(post)
 	SendMsgToDebuggingChannel(fmt.Sprintf("**Running tests on a new post in 'Announcements.**\n**Post:** %v\n**Sender:** %v", post.Message, sender), "")
-	matched, _ := regexp.MatchString(`@channel|@all|@here|#announcement`, post.Message)
-	// if the message is not an announcement...
-	if !matched {
-		// and if the sender wasn't holobot...
-		if sender != "holobot" {
+	// if the message is an annoucnment, return.
+	if isAnnouncement {
+		SendMsgToDebuggingChannel("* **It's an announcement!!**", "")
+		return
+	}
+
+	// So if we've gotten this far we know the message isn't an announcement
+	// If the sender wasn't holobot...
+	if sender != "holobot" {
+		// delete the post.
+		client.DeletePost(post.Id)
+		SendMsgToDebuggingChannel("* **It's not an announcement! Deleted!**", "")
+	} else { // if the sender was holobot
+		if isJoinLeave {
 			// delete the post.
 			client.DeletePost(post.Id)
-			SendMsgToDebuggingChannel("* **It's not an announcement! Deleted!**", "")
+			SendMsgToDebuggingChannel("* **Deleted join/leave message even though holobot sent it!**", "")
 		} else {
-			matched, _ = regexp.MatchString(`(?:^)((`+sender+` has (joined|left) the channel\.)|(.+ (added to|removed from) the (channel|team)( by `+config.UserName+`)?(\.)?)|)(?:$)`, post.Message)
-			// if the sender *was* holobt, and the post was a join/leave message...
-			if matched {
-				// delete the post.
-				client.DeletePost(post.Id)
-				SendMsgToDebuggingChannel("* **Deleted join/leave message even though holobot sent it!**", "")
-			} else {
-				SendMsgToDebuggingChannel("* **It's a message from holobot! I stopped caring if it's an announcement!**", "")
-			}
+			SendMsgToDebuggingChannel("* **It's a non-join/leave message from holobot! I stopped caring if it's an announcement!**", "")
 		}
-		matched, _ = regexp.MatchString(`(?:^)((`+sender+` has (joined|left) the channel\.)|(.+ (added to|removed from) the (channel|team)( by `+config.UserName+`)?(\.)?)|)(?:$)`, post.Message)
-		// then, if the message was not a join/leave message...
-		if !matched {
-			// send explanitory DM, and with the text of their message. (This fails due to a check inside SendDirectMessage if the recipient is holobot.)
-			SendDirectMessage(post.UserId,
-				"Hi there!"+"\n"+"\n"+
-					"**I see you've posted a message in the ~announcements channel that's not an announcement.** I'm letting you know that I deleted it. In order to keep that channel low-volume, **only announcements are allowed there.** We encourage conversations to happen in all other channels."+"\n"+"\n"+
-					"What to do next:"+"\n"+
-					"* **If your post was a reply to an announcement:** use the [the \"How to reply\" guide](https://docs.google.com/document/d/1lAFI9wDK1SHwiNseM9kTmZ1vybSdBZlxxBmZZOv5Nb8) to post your reply in a different channel."+"\n"+
-					"* **If your post was a question or discussion that didn't belong in the announcements channel:** Post it in a relevant channel."+"\n"+
-					"* **If your post was an announcement:** Post it in ~announcements again following [the \"How to announce\" guide](https://docs.google.com/document/d/1owG83jZSD3gJcwP0aRYJTdbEV0HiPHeE7ydmWi10zTw)."+"\n"+"\n"+
-					"Here's the text of your message:"+"\n"+"\n"+
-					"```"+"\n"+"\n"+
-					post.Message+"\n"+"\n"+
-					"```")
-		} else {
-			SendMsgToDebuggingChannel("* **That post was also a join/leave message. No DM sent!**", "")
-		}
+	}
+
+	// then, if the message was not a join/leave message...
+	if !isJoinLeave {
+		// send explanitory DM, and with the text of their message. (This fails due to a check inside SendDirectMessage if the recipient is holobot.)
+		SendDirectMessage(post.UserId,
+			"Hi there!"+"\n"+"\n"+
+				"**I see you've posted a message in the ~announcements channel that's not an announcement.** I'm letting you know that I deleted it. In order to keep that channel low-volume, **only announcements are allowed there.** We encourage conversations to happen in all other channels."+"\n"+"\n"+
+				"What to do next:"+"\n"+
+				"* **If your post was a reply to an announcement:** use the [the \"How to reply\" guide](https://docs.google.com/document/d/1lAFI9wDK1SHwiNseM9kTmZ1vybSdBZlxxBmZZOv5Nb8) to post your reply in a different channel."+"\n"+
+				"* **If your post was a question or discussion that didn't belong in the announcements channel:** Post it in a relevant channel."+"\n"+
+				"* **If your post was an announcement:** Post it in ~announcements again following [the \"How to announce\" guide](https://docs.google.com/document/d/1owG83jZSD3gJcwP0aRYJTdbEV0HiPHeE7ydmWi10zTw)."+"\n"+"\n"+
+				"Here's the text of your message:"+"\n"+"\n"+
+				"```"+"\n"+"\n"+
+				post.Message+"\n"+"\n"+
+				"```")
 	} else {
-		SendMsgToDebuggingChannel("* **It's an announcement!!**", "")
+		SendMsgToDebuggingChannel("* **That post was also a join/leave message. No DM sent!**", "")
 	}
 	return
 }
 
 func HandleTeamJoins(event *model.WebSocketEvent) (err error) {
-	user := event.Data["user_id"].(string)
+	SendMsgToDebuggingChannel("NEW USER!", "")
 	go func() { // spin off go routine to wait a bit before welcoming them
-		time.Sleep(time.Second * 55)
-		teams, _ := client.GetTeamsForUser(user, "")
-		if config.Debugging {
-			fmt.Printf("teams: %v\npublicTeam: %v\n", teams, publicTeam)
-		}
-		if teams != nil && len(teams) == 1 {
-			println("USER IS IN EXACTLY ONE TEAM! (yuss)\n")
-			if teams[0].Id == publicTeam.Id { // if the user is brand new user, and only on the public team...
-				fmt.Printf("USER's ONE TEAM IS: %v\n", publicTeam)
-				// send them the welcome text as a direct message:
-				SendDirectMessage(user, WelcomeMessage)
-				// and add the user to announcements
-				client.AddChannelMember(announcementsChannel.Id, user)
+		for i := 0; i <= 360; i++ {
+			user := event.Data["user_id"].(string)
+			teams, _ := client.GetTeamsForUser(user, "")
+			if teams != nil && len(teams) == 1 {
+				if teams[0].Id == publicTeam.Id {
+					SendMsgToDebuggingChannel("USER IS IN PUBLIC TEAM, SENDING MESSAGE", "")
+					// send them the welcome text as a direct message:
+					SendDirectMessage(user, WelcomeMessage)
+					// and add the user to announcements
+					client.AddChannelMember(announcementsChannel.Id, user)
+					return
+				}
 			}
-		} else {
-			fmt.Printf("A new user is somehow in no team or more than one team‽‽ That's preposterous!\n")
-			fmt.Printf("Teams data: %v\n", teams)
+			SendMsgToDebuggingChannel(fmt.Sprintf("USER IS NOT YET IN A TEAM! WAITING 5 SECONDS\n`i` is: %v\nTime left is: %v seconds\n", teams, len(teams), i, 360-i*5), "")
+			time.Sleep(time.Second * 5)
 		}
 	}()
 	return
