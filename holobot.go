@@ -84,8 +84,8 @@ func main() {
 
 	SetupGracefulShutdown()
 
-	client = model.NewAPIv4Client("http://" + config.Domain) //FOR TESTING
-	// client = model.NewAPIv4Client("https://" + config.Domain)
+	// client = model.NewAPIv4Client("http://" + config.Domain) //FOR TESTING
+	client = model.NewAPIv4Client("https://" + config.Domain)
 
 	// Let's test to see if the mattermost server is up and running
 	MakeSureServerIsRunning()
@@ -282,8 +282,8 @@ func main() {
 		},
 	}
 	// Let's start listening to some channels via the websocket!
-	webSocketClient, apperr := model.NewWebSocketClient4("ws://"+config.Domain, client.AuthToken) //FOR TESTING
-	// webSocketClient, apperr := model.NewWebSocketClient4("wss://"+config.Domain, client.AuthToken)
+	// webSocketClient, apperr := model.NewWebSocketClient4("ws://"+config.Domain, client.AuthToken) //FOR TESTING
+	webSocketClient, apperr := model.NewWebSocketClient4("wss://"+config.Domain, client.AuthToken)
 	if err != nil {
 		println("We failed to connect to the web socket")
 		PrintError(apperr)
