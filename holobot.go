@@ -456,7 +456,7 @@ func HandleAnnouncementMessages(event *model.WebSocketEvent) (err error) {
 			client.DeletePost(post.Id)
 			SendMsgToDebuggingChannel(fmt.Sprintf("**It's not! Deleted:** %v", post.Message), "")
 			//unless the message was a join/leave message
-			matched, _ = regexp.MatchString(`(?:^|\W)((`+sender+` has (joined|left) the channel\.)|(.+ (added to|removed from) the channel( by `+config.UserName+`)?)|)(?:$)`, post.Message) //FIXME check this regex
+			matched, _ = regexp.MatchString(`(?:^|\W)((`+sender+` has (joined|left) the channel\.)|(.+ (added to|removed from) the channel( by (`+config.UserName+`|`+sender+`))?)|)(?:$)`, post.Message)
 			if !matched {
 				// send DM to sender explaining the sitch, and with the text of their message
 				SendDirectMessage(post.UserId,
