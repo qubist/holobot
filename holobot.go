@@ -504,25 +504,23 @@ func HandleAnnouncementMessages(event *model.WebSocketEvent) (err error) {
 }
 
 func HandleTeamJoins(event *model.WebSocketEvent) (err error) {
-	user := event.Data["user_id"].(string)
+	SendMsgToDebuggingChannel("NEW USER!", "")
 	go func() { // spin off go routine to wait a bit before welcoming them
-		time.Sleep(time.Second * 300)
-		teams, _ := client.GetTeamsForUser(user, "")
-		if config.Debugging {
-			fmt.Printf("teams: %v\npublicTeam: %v\n", teams, publicTeam)
-		}
-		if teams != nil && len(teams) == 1 {
-			println("USER IS IN EXACTLY ONE TEAM! (yuss)\n")
-			if teams[0].Id == publicTeam.Id { // if the user is brand new user, and only on the public team...
-				fmt.Printf("USER's ONE TEAM IS: %v\n", publicTeam)
-				// send them the welcome text as a direct message:
-				SendDirectMessage(user, WelcomeMessage)
-				// and add the user to announcements
-				client.AddChannelMember(announcementsChannel.Id, user)
+		for i := 0; i <= 360; i++ {
+			user := event.Data["user_id"].(string)
+			teams, _ := client.GetTeamsForUser(user, "")
+			if teams != nil && len(teams) == 1 {
+				if teams[0].Id == publicTeam.Id {
+					SendMsgToDebuggingChannel("USER IS IN PUBLIC TEAM, SENDING MESSAGE", "")
+					// send them the welcome text as a direct message:
+					SendDirectMessage(user, WelcomeMessage)
+					// and add the user to announcements
+					client.AddChannelMember(announcementsChannel.Id, user)
+					return
+				}
 			}
-		} else {
-			fmt.Printf("A new user is somehow in no team or more than one team‽‽ That's preposterous!\n")
-			fmt.Printf("Teams data: %v\n", teams)
+			SendMsgToDebuggingChannel(fmt.Sprintf("USER IS NOT YET IN A TEAM! WAITING 5 SECONDS\n`i` is: %v\nTime left is: %v seconds\n", teams, len(teams), i, 360-i*5), "")
+			time.Sleep(time.Second * 5)
 		}
 	}()
 	return
