@@ -441,53 +441,64 @@ func HandleWebSocketResponse(event *model.WebSocketEvent) {
 
 //  Handlers ----------------------------------------------
 
+func IsJoinLeave(sender string, post *model.Post) bool {
+	matched, _ := regexp.MatchString(`(?:^|\W)((`+sender+` has (joined|left) the channel\.)|(.+ (added to|removed from) the channel( by (`+config.UserName+`|`+sender+`))?(\.)?))(?:$)`, post.Message)
+	return matched
+}
+
+func IsAnnouncement(post *model.Post) bool {
+	matched, _ := regexp.MatchString(`@channel|@all|@here|#announcement`, post.Message)
+	return matched
+}
+
 func HandleAnnouncementMessages(event *model.WebSocketEvent) (err error) {
-	// don't do anything if the channel that was joined was not Announcements. NOTE: the announcements Channel is only the announcements channel on the public team which is what we (I?) want here.
+	// don't do anything if the channel that was joined was not Announcements. NOTE: the announcements Channel is only the announcements channel on the public team which is what we want here.
 	if event.Broadcast.ChannelId != announcementsChannel.Id {
 		return
 	}
 	post := model.PostFromJson(strings.NewReader(event.Data["post"].(string)))
 	sender := event.Data["sender_name"].(string)
+	isJoinLeave := IsJoinLeave(sender, post)
+	isAnnouncement := IsAnnouncement(post)
 	SendMsgToDebuggingChannel(fmt.Sprintf("**Running tests on a new post in 'Announcements.**\n**Post:** %v\n**Sender:** %v", post.Message, sender), "")
-	matched, _ := regexp.MatchString(`@channel|@all|@here|#announcement`, post.Message)
-	// if the message is not an announcement...
-	if !matched {
-		// and if the sender wasn't holobot...
-		if sender != "holobot" {
+	// if the message is an annoucnment, return.
+	if isAnnouncement {
+		SendMsgToDebuggingChannel("* **It's an announcement!!**", "")
+		return
+	}
+
+	// So if we've gotten this far we know the message isn't an announcement
+	// If the sender wasn't holobot...
+	if sender != "holobot" {
+		// delete the post.
+		client.DeletePost(post.Id)
+		SendMsgToDebuggingChannel("* **It's not an announcement! Deleted!**", "")
+	} else { // if the sender was holobot
+		if isJoinLeave {
 			// delete the post.
 			client.DeletePost(post.Id)
-			SendMsgToDebuggingChannel("* **It's not an announcement! Deleted!**", "")
+			SendMsgToDebuggingChannel("* **Deleted join/leave message even though holobot sent it!**", "")
 		} else {
-			matched, _ = regexp.MatchString(`(?:^|\W)((`+sender+` has (joined|left) the channel\.)|(.+ (added to|removed from) the channel( by (`+config.UserName+`|`+sender+`))?(\.)?))(?:$)`, post.Message)
-			// if the sender *was* holobt, and the post was a join/leave message...
-			if matched {
-				// delete the post.
-				client.DeletePost(post.Id)
-				SendMsgToDebuggingChannel("* **Deleted join/leave message even though holobot sent it!**", "")
-			} else {
-				SendMsgToDebuggingChannel("* **It's a message from holobot! I stopped caring if it's an announcement!**", "")
-			}
+			SendMsgToDebuggingChannel("* **It's a non-join/leave message from holobot! I stopped caring if it's an announcement!**", "")
 		}
-		matched, _ = regexp.MatchString(`(?:^|\W)((`+sender+` has (joined|left) the channel\.)|(.+ (added to|removed from) the channel( by (`+config.UserName+`|`+sender+`))?(\.)?))(?:$)`, post.Message)
-		// then, if the message was not a join/leave message...
-		if !matched {
-			// send explanitory DM, and with the text of their message. (This fails due to a check inside SendDirectMessage if the recipient is holobot.)
-			SendDirectMessage(post.UserId,
-				"Hi there!"+"\n"+"\n"+
-					"**I see you've posted a message in the ~announcements channel that's not an announcement.** I'm letting you know that I deleted it. In order to keep that channel low-volume, **only announcements are allowed there.** We encourage conversations to happen in all other channels."+"\n"+"\n"+
-					"What to do next:"+"\n"+
-					"* **If your post was a reply to an announcement:** use the [the \"How to reply\" guide](https://docs.google.com/document/d/1lAFI9wDK1SHwiNseM9kTmZ1vybSdBZlxxBmZZOv5Nb8) to post your reply in a different channel."+"\n"+
-					"* **If your post was a question or discussion that didn't belong in the announcements channel:** Post it in a relevant channel."+"\n"+
-					"* **If your post was an announcement:** Post it in ~announcements again following [the \"How to announce\" guide](https://docs.google.com/document/d/1owG83jZSD3gJcwP0aRYJTdbEV0HiPHeE7ydmWi10zTw)."+"\n"+"\n"+
-					"Here's the text of your message:"+"\n"+"\n"+
-					"```"+"\n"+"\n"+
-					post.Message+"\n"+"\n"+
-					"```")
-		} else {
-			SendMsgToDebuggingChannel("* **That post was also a join/leave message. No DM sent!**", "")
-		}
+	}
+
+	// then, if the message was not a join/leave message...
+	if !isJoinLeave {
+		// send explanitory DM, and with the text of their message. (This fails due to a check inside SendDirectMessage if the recipient is holobot.)
+		SendDirectMessage(post.UserId,
+			"Hi there!"+"\n"+"\n"+
+				"**I see you've posted a message in the ~announcements channel that's not an announcement.** I'm letting you know that I deleted it. In order to keep that channel low-volume, **only announcements are allowed there.** We encourage conversations to happen in all other channels."+"\n"+"\n"+
+				"What to do next:"+"\n"+
+				"* **If your post was a reply to an announcement:** use the [the \"How to reply\" guide](https://docs.google.com/document/d/1lAFI9wDK1SHwiNseM9kTmZ1vybSdBZlxxBmZZOv5Nb8) to post your reply in a different channel."+"\n"+
+				"* **If your post was a question or discussion that didn't belong in the announcements channel:** Post it in a relevant channel."+"\n"+
+				"* **If your post was an announcement:** Post it in ~announcements again following [the \"How to announce\" guide](https://docs.google.com/document/d/1owG83jZSD3gJcwP0aRYJTdbEV0HiPHeE7ydmWi10zTw)."+"\n"+"\n"+
+				"Here's the text of your message:"+"\n"+"\n"+
+				"```"+"\n"+"\n"+
+				post.Message+"\n"+"\n"+
+				"```")
 	} else {
-		SendMsgToDebuggingChannel("* **It's an announcement!!**", "")
+		SendMsgToDebuggingChannel("* **That post was also a join/leave message. No DM sent!**", "")
 	}
 	return
 }
