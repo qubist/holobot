@@ -232,7 +232,7 @@ func main() {
 
 						// converts time into the desired output time zones,
 						if err != nil {
-							timeZoneText = fmt.Sprintf("I couldn't understand the time: \"%s\"", m[0])
+							timeZoneText = fmt.Sprintf("I couldn't understand the time \"%s\".", m[0])
 						} else {
 							ptl, _ := time.LoadLocation("America/Los_Angeles")
 							pt := t.In(ptl).Format("3:04 PM")
