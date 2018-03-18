@@ -607,8 +607,7 @@ func HandleCommands(event *model.WebSocketEvent) (err error) {
 		// ignore anything that doesn't say @holobot
 		if matched, _ := regexp.MatchString(`(?:^|\W)@`+config.UserName+`(?:$|\W)`, post.Message); matched {
 			for _, cmd := range commands {
-				// help command
-				if matched, _ := regexp.MatchString(`(?:^|\W)@`+config.UserName+` `+cmd.Name+`(?:$|\W)`, post.Message); matched {
+				if matched, _ := regexp.MatchString(`(?:^|\W)@`+config.UserName+` +`+cmd.Name+`(?:$|\W)`, post.Message); matched {
 					cmd.Handler(event, post)
 				}
 			}
