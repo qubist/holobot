@@ -232,7 +232,7 @@ func main() {
 
 						// converts time into the desired output time zones,
 						if err != nil {
-							timeZoneText = fmt.Sprintf("I couldn't understand the time: \"%s\"", m[0])
+							timeZoneText = fmt.Sprintf("I couldn't understand the time \"%s\".", m[0])
 						} else {
 							ptl, _ := time.LoadLocation("America/Los_Angeles")
 							pt := t.In(ptl).Format("3:04 PM")
@@ -486,6 +486,8 @@ func HandleAnnouncementMessages(event *model.WebSocketEvent) (err error) {
 	// then, if the message was not a join/leave message...
 	if !isJoinLeave {
 		// send explanitory DM, and with the text of their message. (This fails due to a check inside SendDirectMessage if the recipient is holobot.)
+
+		messagesrc := strings.Replace(post.Message, "\n", "\n    ", -1)
 		SendDirectMessage(post.UserId,
 			"Hi there!"+"\n"+"\n"+
 				"**I see you've posted a message in the ~announcements channel that's not an announcement.** I'm letting you know that I deleted it. In order to keep that channel low-volume, **only announcements are allowed there.** We encourage conversations to happen in all other channels."+"\n"+"\n"+
@@ -494,9 +496,7 @@ func HandleAnnouncementMessages(event *model.WebSocketEvent) (err error) {
 				"* **If your post was a question or discussion that didn't belong in the announcements channel:** Post it in a relevant channel."+"\n"+
 				"* **If your post was an announcement:** Post it in ~announcements again following [the \"How to announce\" guide](https://docs.google.com/document/d/1owG83jZSD3gJcwP0aRYJTdbEV0HiPHeE7ydmWi10zTw)."+"\n"+"\n"+
 				"Here's the text of your message:"+"\n"+"\n"+
-				"```"+"\n"+"\n"+
-				post.Message+"\n"+"\n"+
-				"```")
+				"    "+messagesrc)
 	} else {
 		SendMsgToDebuggingChannel("* **That post was also a join/leave message. No DM sent!**", "")
 	}
@@ -566,12 +566,23 @@ func HandleReactions(event *model.WebSocketEvent) (err error) {
 func HandleSourceRequests(event *model.WebSocketEvent) (err error) {
 	reaction := model.ReactionFromJson(strings.NewReader(event.Data["reaction"].(string)))
 	post, _ := client.GetPost(reaction.PostId, "")
+	channel, _ := client.GetChannel(post.ChannelId, "")
+	team, _ := client.GetTeam(channel.TeamId, "")
 	postuser, _ := client.GetUser(post.UserId, "")
 	reactuser, _ := client.GetUser(reaction.UserId, "")
+	messagesrc := strings.Replace(post.Message, "\n", "\n    ", -1)
+	teamname := ""
+	permalink := ""
+	if team != nil {
+		teamname = team.Name
+		permalink = "[message](http://" + config.Domain + "/" + teamname + "/pl/" + post.Id + ")"
+	} else {
+		permalink = "message"
+	}
 	// if you react with :u55b6:
 	if reaction.EmojiName == "u55b6" {
 		SendMsgToDebuggingChannel(fmt.Sprintf("**Source request reaction detected!!**\n**Event data:**%v", event.Data), "")
-		SendDirectMessage(reactuser.Id, "Here's plaintext of @"+postuser.Username+"'s message:\n```\n"+post.Message+"\n```")
+		SendDirectMessage(reactuser.Id, "Here's plaintext of @"+postuser.Username+"'s "+permalink+":\n\n    "+messagesrc)
 		client.DeleteReaction(reaction)
 	}
 	return
@@ -607,8 +618,7 @@ func HandleCommands(event *model.WebSocketEvent) (err error) {
 		// ignore anything that doesn't say @holobot
 		if matched, _ := regexp.MatchString(`(?:^|\W)@`+config.UserName+`(?:$|\W)`, post.Message); matched {
 			for _, cmd := range commands {
-				// help command
-				if matched, _ := regexp.MatchString(`(?:^|\W)@`+config.UserName+` `+cmd.Name+`(?:$|\W)`, post.Message); matched {
+				if matched, _ := regexp.MatchString(`(?:^|\W)@`+config.UserName+` +`+cmd.Name+`(?:$|\W)`, post.Message); matched {
 					cmd.Handler(event, post)
 				}
 			}
