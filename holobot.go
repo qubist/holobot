@@ -571,10 +571,18 @@ func HandleSourceRequests(event *model.WebSocketEvent) (err error) {
 	postuser, _ := client.GetUser(post.UserId, "")
 	reactuser, _ := client.GetUser(reaction.UserId, "")
 	messagesrc := strings.Replace(post.Message, "\n", "\n    ", -1)
+	teamname := ""
+	permalink := ""
+	if team != nil {
+		teamname = team.Name
+		permalink = "[message](http://" + config.Domain + "/" + teamname + "/pl/" + post.Id + ")"
+	} else {
+		permalink = "message"
+	}
 	// if you react with :u55b6:
 	if reaction.EmojiName == "u55b6" {
 		SendMsgToDebuggingChannel(fmt.Sprintf("**Source request reaction detected!!**\n**Event data:**%v", event.Data), "")
-		SendDirectMessage(reactuser.Id, "Here's plaintext of @"+postuser.Username+"'s [message](http://"+config.Domain+"/"+team.Name+"/pl/"+post.Id+"):\n\n    "+messagesrc)
+		SendDirectMessage(reactuser.Id, "Here's plaintext of @"+postuser.Username+"'s "+permalink+":\n\n    "+messagesrc)
 		client.DeleteReaction(reaction)
 	}
 	return
