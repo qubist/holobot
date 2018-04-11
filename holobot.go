@@ -486,6 +486,8 @@ func HandleAnnouncementMessages(event *model.WebSocketEvent) (err error) {
 	// then, if the message was not a join/leave message...
 	if !isJoinLeave {
 		// send explanitory DM, and with the text of their message. (This fails due to a check inside SendDirectMessage if the recipient is holobot.)
+
+		messagesrc := strings.Replace(post.Message, "\n", "\n    ", -1)
 		SendDirectMessage(post.UserId,
 			"Hi there!"+"\n"+"\n"+
 				"**I see you've posted a message in the ~announcements channel that's not an announcement.** I'm letting you know that I deleted it. In order to keep that channel low-volume, **only announcements are allowed there.** We encourage conversations to happen in all other channels."+"\n"+"\n"+
@@ -494,9 +496,7 @@ func HandleAnnouncementMessages(event *model.WebSocketEvent) (err error) {
 				"* **If your post was a question or discussion that didn't belong in the announcements channel:** Post it in a relevant channel."+"\n"+
 				"* **If your post was an announcement:** Post it in ~announcements again following [the \"How to announce\" guide](https://docs.google.com/document/d/1owG83jZSD3gJcwP0aRYJTdbEV0HiPHeE7ydmWi10zTw)."+"\n"+"\n"+
 				"Here's the text of your message:"+"\n"+"\n"+
-				"```"+"\n"+"\n"+
-				post.Message+"\n"+"\n"+
-				"```")
+				"    "+messagesrc)
 	} else {
 		SendMsgToDebuggingChannel("* **That post was also a join/leave message. No DM sent!**", "")
 	}
