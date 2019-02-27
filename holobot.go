@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"math/rand"
 )
 
 type Config struct {
@@ -148,6 +149,16 @@ func main() {
 			},
 		}, */
 
+		Command{
+			Name:        "randombuddy",
+			Description: "Invites a random member of the privateTeam to chat with you.",
+			Handler: func(event *model.WebSocketEvent, post *model.Post) error {
+				user := GetRandomUserInTeam(privateTeam)
+				client.AddChannelMember(event.Broadcast.ChannelId, user.Id)
+				SendMsgToChannel(event.Broadcast.ChannelId, "Have a happy buddy chat!", post.Id)
+				return nil
+			}
+		},
 		// time command
 		Command{
 			Name:        "time",
@@ -343,6 +354,21 @@ func UpdateTheBotUserIfNeeded() {
 			println("Looks like this might be the first run so we've updated the bots account settings")
 		}
 	}
+}
+
+func GetRandomUserInTeam(team *model.Team) *model.User {
+	userList, resp := client.GetUsersInTeam(team, 0, 200, "")
+	if rest.Error != nil {
+		println("We failed list users")
+		PrintError(resp.Error)
+		os.Exit(1)
+		return nil
+	}
+	if config.Debugging {
+		fmt.Printf("Trying to get a random user in team %v", team)
+	}
+	selectedPos := rand.Intn(len(userList))
+	return userList[selectedPos]
 }
 
 func FindTeam(name string) *model.Team {
