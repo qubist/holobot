@@ -74,9 +74,9 @@ You can verify the Bot is running when
 1. In the terminal window, press `CTRL+C` to stop the bot. You should see `Mattermost Bot Sample has stopped running` posted in the `Debugging For Sample Bot` channel.
 
 ## Maintainer
-[Will](https://github.com/qubist/) for now
+NOT [Will](https://github.com/qubist/)
 
-[zippy](https://github.com/zippy/) has also maintained this software in the past
+[zippy](https://github.com/zippy/) has maintained this software in the past
 
 ## Contribute
 Questions can be asked in the [Holochain public Mattermost server](https://chat.holochain.net). I'd love your suggestions!
